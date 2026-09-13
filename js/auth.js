@@ -1,6 +1,6 @@
 // ============================================================
 // Elden Earth — Authentication Bridge
-// Passes Google Token & Anonymous Guests directly into Firebase Auth
+// Passes Google Token & Seamlessly Migrates Guest Saves to Google
 // ============================================================
 const Auth = (() => {
 
@@ -24,7 +24,7 @@ const Auth = (() => {
       onSignedIn(player);
     }
 
-    // Ensure Firebase App is initialized via Store before calling auth()
+    // Ensure Firebase App is initialized via Store
     if (typeof Store !== "undefined" && Store.getDb) {
       Store.getDb();
     }
@@ -76,7 +76,7 @@ const Auth = (() => {
           s.player.id = cred.user.uid;
           if (!s.player.name) s.player.name = "Traveler";
           Store.save();
-            completeSignIn(s.player, cred.user.uid);
+          completeSignIn(s.player, cred.user.uid);
         }
       } catch (err) {
         console.warn("[Auth] Anonymous login notice, falling back to local:", err);
@@ -92,7 +92,7 @@ const Auth = (() => {
       guestBtn.addEventListener("touchend", handleGuestLogin);
     }
 
-    // --- GOOGLE SIGN-IN HANDOFF TO FIREBASE AUTH ---
+    // --- GOOGLE SIGN-IN & GUEST-TO-CLOUD MIGRATION HANDOFF ---
     if (!CONFIG.GOOGLE_CLIENT_ID) return;
 
     let attempts = 0;
@@ -113,24 +113,86 @@ const Auth = (() => {
           callback: async (resp) => {
             if (!resp.credential) return;
 
-            // 1. Convert Google GIS token into Firebase Auth Credential!
             const credential = firebase.auth.GoogleAuthProvider.credential(resp.credential);
+            const currentUser = firebase.auth().currentUser;
+
+            // 1. Snapshot Guest State in Memory BEFORE signing in
+            const localState = Store.get() || {};
+            const isGuest = currentUser ? currentUser.isAnonymous : (!localState.player?.id || localState.player.id.startsWith("guest-"));
+            
+            const guestPlots = Object.assign({}, localState.plots || {});
+            const guestPlotsCount = Object.keys(guestPlots).length;
+            const guestEB = localState.eb;
+            const guestDiamonds = localState.diamonds;
+            const guestCash = localState.cash || 0;
+            const guestLifetime = localState.lifetimeRent || 0;
+            const guestExtractor = Object.assign({}, localState.extractor || {});
+            const guestCapsule = Object.assign({}, localState.capsule || {});
+            const oldGuestId = localState.player?.id;
 
             try {
-              // 2. Authenticate with Firebase! (request.auth is now REAL on the server!)
-              const userCredential = await firebase.auth().signInWithCredential(credential);
-              const fbUser = userCredential.user;
-              
+              let fbUser = null;
+
+              // 2. Try native credential linking (Keeps identical UID with 0 data loss!)
+              if (currentUser && currentUser.isAnonymous) {
+                try {
+                  const linkResult = await currentUser.linkWithCredential(credential);
+                  fbUser = linkResult.user;
+                  console.log("[Auth] Successfully linked Guest account to Google UID:", fbUser.uid);
+                } catch (linkErr) {
+                  // If Google account already exists on another device, sign into it directly
+                  const signInResult = await firebase.auth().signInWithCredential(credential);
+                  fbUser = signInResult.user;
+                }
+              } else {
+                const signInResult = await firebase.auth().signInWithCredential(credential);
+                fbUser = signInResult.user;
+              }
+
+              if (!fbUser) return;
+
+              // 3. Check Cloud Save status
+              const cloudState = await Store.syncFromCloud(fbUser.uid);
+              const cloudPlotsCount = Object.keys(cloudState?.plots || {}).length;
+
+              // 4. MIGRATION: If guest had plots/EB and the Google account is new, adopt guest data!
               const s = Store.get();
               s.player.id = fbUser.uid;
               s.player.name = fbUser.displayName || s.player.name || "Traveler";
               s.player.avatar = fbUser.photoURL ? "img:" + fbUser.photoURL : (s.player.avatar || "🙂");
 
-              await Store.syncFromCloud(fbUser.uid);
+              if (isGuest && guestPlotsCount > 0 && cloudPlotsCount === 0) {
+                console.log(`[Auth] Migrating ${guestPlotsCount} plots & ${guestEB} EB into Google Account...`);
+                s.plots = guestPlots;
+                s.eb = guestEB;
+                s.diamonds = guestDiamonds;
+                s.cash = Math.max(Number(s.cash) || 0, guestCash);
+                s.lifetimeRent = Math.max(Number(s.lifetimeRent) || 0, guestLifetime);
+                s.extractor = guestExtractor;
+                s.capsule = guestCapsule;
+
+                // Update plot ownership on Firestore to the new Google UID
+                const db = Store.getDb();
+                if (db) {
+                  for (const tid in guestPlots) {
+                    db.collection("plots").doc(tid).update({
+                      ownerId: fbUser.uid,
+                      ownerName: s.player.name,
+                      avatar: s.player.avatar
+                    }).catch(e => console.warn("[Auth] Plot owner re-assign notice:", e));
+                  }
+                  // Clean up old guest save in Firestore
+                  if (oldGuestId && oldGuestId !== fbUser.uid) {
+                    db.collection("saves").doc(oldGuestId).delete().catch(() => {});
+                  }
+                }
+              }
+
+              // 5. Persist immediately to Google Cloud
               Store.save(true);
               completeSignIn(s.player, fbUser.uid);
             } catch (authErr) {
-              console.error("[Auth] Firebase credential exchange failed:", authErr);
+              console.error("[Auth] Google sign-in / migration failed:", authErr);
             }
           },
         });
