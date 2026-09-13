@@ -158,8 +158,12 @@ const Auth = (() => {
               // 4. MIGRATION: If guest had plots/EB and the Google account is new, adopt guest data!
               const s = Store.get();
               s.player.id = fbUser.uid;
-              s.player.name = fbUser.displayName || s.player.name || "Traveler";
-              s.player.avatar = fbUser.photoURL ? "img:" + fbUser.photoURL : (s.player.avatar || "🙂");
+              if (!s.player.name || s.player.name === "Traveler") {
+                s.player.name = fbUser.displayName || "Traveler";
+              }
+              if (!s.player.avatar || s.player.avatar === "🙂") {
+                s.player.avatar = fbUser.photoURL ? "img:" + fbUser.photoURL : "🙂";
+              }
 
               if (isGuest && guestPlotsCount > 0 && cloudPlotsCount === 0) {
                 console.log(`[Auth] Migrating ${guestPlotsCount} plots & ${guestEB} EB into Google Account...`);
