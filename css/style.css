@@ -4007,3 +4007,89 @@ button[aria-label="Close ad"],
   color: var(--teal);
   text-shadow: 0 0 10px rgba(79, 214, 196, 0.4);
 }
+
+/* Interactive Bird's Eye Box Hover & Tap Glow */
+.parcel-total-box.birds-eye-trigger {
+  cursor: pointer !important;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.parcel-total-box.birds-eye-trigger:hover,
+.parcel-total-box.birds-eye-trigger:active {
+  transform: translateY(-2px);
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 16px rgba(212, 175, 97, 0.45) !important;
+}
+
+/* Symmetrical Placement for 🧬 Model and 📷 Photo Badges */
+.avatar-edit-badge.badge-model {
+  left: -4px !important;
+  right: auto !important;
+  bottom: -4px !important;
+}
+
+.avatar-edit-badge.badge-photo {
+  right: -4px !important;
+  bottom: -4px !important;
+}
+
+/* ================= PLAYER INFO MODAL EXPANSIONS ================= */
+
+/* Remote Citadel Control Hub */
+.info-citadel-remote-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(13, 20, 32, 0.95);
+  border: 1.5px solid rgba(79, 214, 196, 0.4);
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin: 12px 0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+}
+
+.remote-citadel-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.remote-citadel-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 0 8px #4fd6c4);
+}
+
+.remote-citadel-info strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--gold-hi);
+}
+
+.remote-recall-btn {
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  font-family: var(--font-display);
+  border-color: rgba(255, 71, 87, 0.5) !important;
+  color: #ff6b81 !important;
+}
+
+.remote-recall-btn:hover {
+  background: rgba(255, 71, 87, 0.15) !important;
+  border-color: #ff4757 !important;
+}
+
+/* Interactive Bird's Eye View Button */
+.stat-card.birds-eye-trigger {
+  cursor: pointer;
+  border-color: rgba(212, 175, 97, 0.5);
+  transition: all 0.2s ease;
+}
+
+.stat-card.birds-eye-trigger:hover,
+.stat-card.birds-eye-trigger:active {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(212, 175, 97, 0.4);
+}
