@@ -128,44 +128,57 @@ const Chat = (() => {
     const db = Store.getDb();
     if (!db) return;
 
+    if (!localStorage.getItem("eldenEarth.lastChatRead.v1")) {
+      localStorage.setItem("eldenEarth.lastChatRead.v1", Date.now().toString());
+    }
+
     try {
       db.collection("chat")
         .orderBy("timestamp", "desc")
         .limit(MAX_MESSAGES)
         .onSnapshot((snapshot) => {
-          let hasNewMessage = false;
+          const lastReadTime = parseInt(
+            localStorage.getItem("eldenEarth.lastChatRead.v1") || "0",
+            10
+          );
+          let unreadCount = 0;
 
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === "added") {
-              hasNewMessage = true;
-              // Check if message is already in our array to prevent duplicates
-              if (!messages.find(m => m.id === change.doc.id)) {
-                messages.push({ id: change.doc.id, ...change.doc.data() });
-              }
-            } else if (change.type === "removed") {
-              const idx = messages.findIndex(m => m.id === change.doc.id);
-              if (idx > -1) messages.splice(idx, 1);
+          const state = Store.get();
+          const myId = state?.player?.id;
+
+          messages.length = 0;
+
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            const message = JSON.parse(JSON.stringify(data));
+
+            messages.unshift(message);
+
+            // Only count unread messages from OTHER players.
+            if (
+              !isOpen &&
+              message.timestamp &&
+              message.timestamp > lastReadTime &&
+              message.senderId !== myId
+            ) {
+              unreadCount++;
             }
           });
 
-          // Only sort, clean, and re-render if something actually changed!
-          if (hasNewMessage) {
-            messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+          renderMessages();
 
-            // Enforce max array size locally
-            if (messages.length > MAX_MESSAGES) {
-              messages.splice(0, messages.length - MAX_MESSAGES);
-            }
-
-            renderMessages();
-
-            if (!isOpen && unreadBadge) {
+          if (!isOpen && unreadBadge) {
+            if (unreadCount > 0) {
+              unreadBadge.textContent =
+                unreadCount > 9 ? "9+" : unreadCount.toString();
               unreadBadge.classList.remove("hidden");
+            } else {
+              unreadBadge.classList.add("hidden");
             }
           }
-        }, (err) => console.warn("[Chat] Listener warning:", err));
+        });
     } catch (e) {
-      console.warn("[Chat] Setup notice:", e);
+      console.warn("[Chat] Sync notice:", e);
     }
   }
   
@@ -203,10 +216,17 @@ const Chat = (() => {
     if (!drawer) return;
     isOpen = true;
     drawer.classList.remove("hidden");
-    if (unreadBadge) unreadBadge.classList.add("hidden");
+    
+    // Mark all current messages as read in local storage!
+    localStorage.setItem("eldenEarth.lastChatRead.v1", Date.now().toString());
+    if (unreadBadge) {
+      unreadBadge.textContent = "0";
+      unreadBadge.classList.add("hidden");
+    }
+
     renderMessages();
     updateOnlineCount();
-    setTimeout(() => inputEl?.focus(), 150);
+    setTimeout(() => inputEl?.focus(), 250);
   }
 
   function close() {

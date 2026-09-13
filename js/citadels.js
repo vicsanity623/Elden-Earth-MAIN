@@ -895,5 +895,12 @@ const Citadels = (() => {
     playerCoords = { lat, lon };
   }
 
-  return { init, checkCapsuleUnlock, plantCapsule, setPlayerPosition, render };
+  function getMyCitadel() {
+    const state = Store.get();
+    const myId = state?.player?.id;
+    if (!myId) return null;
+    return Object.values(globalCitadels).find(c => c.creatorId === myId) || null;
+  }
+
+  return { init, checkCapsuleUnlock, plantCapsule, setPlayerPosition, render, getMyCitadel, relocateCitadel };
 })();
