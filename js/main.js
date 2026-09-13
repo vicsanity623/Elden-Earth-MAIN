@@ -195,10 +195,12 @@
       av.textContent = avatar || "🙂";
     }
 
-    // Only show the edit pencils on your own profile
+    // Only show the 🧬 model and 📷 photo buttons on your own profile
     const editAvatarBtn = el("edit-avatar-btn");
+    const uploadPhotoBtn = el("upload-photo-btn");
     const editNameBtn = el("edit-name-btn");
     if (editAvatarBtn) editAvatarBtn.style.display = isOtherPlayer ? "none" : "flex";
+    if (uploadPhotoBtn) uploadPhotoBtn.style.display = isOtherPlayer ? "none" : "flex";
     if (editNameBtn) editNameBtn.style.display = isOtherPlayer ? "none" : "inline-flex";
 
     // Hide "Sign in with Google" button for authenticated Google players; only show for guests
@@ -211,7 +213,7 @@
 
     // Initial Rent Display (Shows Lifetime Accrued Rent, NOT spendable balance)
     let rentVal = isOtherPlayer ? 0 : (state.lifetimeRent || state.cash || 0);
-    el("info-total-rent").textContent = "$" + Number(rentVal).toFixed(15);
+    el("info-total-rent").textContent = "$" + Number(rentVal).toFixed(11);
 
     // Fetch and display the other player's live cloud earnings (including offline accumulation)
     if (isOtherPlayer && targetPlayerData.ownerId) {
@@ -242,7 +244,7 @@
               lRent = 0.854210 + offlineEarned;
             }
 
-            el("info-total-rent").textContent = "$" + Number(lRent).toFixed(15);
+            el("info-total-rent").textContent = "$" + Number(lRent).toFixed(11);
           }
         } catch (e) {
           console.warn("[PlayerInfo] Error fetching player cash:", e);
@@ -316,6 +318,23 @@
         });
       } else {
         mayorStatusEl.textContent = "🛡️ Citizen of the Realm";
+      }
+    }
+
+    // --- Remote Citadel Card (Only shows on your own profile if you have a planted hold) ---
+    const remoteCard = el("info-citadel-remote-card");
+    if (remoteCard) {
+      if (!isOtherPlayer && typeof Citadels !== "undefined" && Citadels.getMyCitadel) {
+        const myCit = Citadels.getMyCitadel();
+        if (myCit) {
+          remoteCard.style.display = "flex";
+          if (el("remote-citadel-title")) el("remote-citadel-title").textContent = `${myCit.creatorName}'s Hold (${myCit.rarity.toUpperCase()})`;
+          if (el("remote-citadel-coords")) el("remote-citadel-coords").textContent = `Coords: [${myCit.lat.toFixed(3)}, ${myCit.lon.toFixed(3)}]`;
+        } else {
+          remoteCard.style.display = "none";
+        }
+      } else {
+        remoteCard.style.display = "none";
       }
     }
   }

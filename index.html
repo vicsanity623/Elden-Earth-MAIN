@@ -89,7 +89,7 @@
     <div class="hero-balance-card" id="hero-balance-card">
       <div class="hero-top-line">
         <div class="hero-brand-title">
-          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.7.1</span>
+          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.7.2</span>
         </div>
         <div id="boost-timer-badge" class="boost-timer-badge hidden">⚡ 30X BOOST <span id="boost-countdown">00:00:00</span></div>
       </div>
@@ -285,15 +285,18 @@
 
 <!-- ===================== PLAYER INFO MODAL ===================== -->
 <div id="player-info-modal" class="modal hidden">
+  <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
   <div class="modal-card player-info-card">
     <button class="close-btn" data-close="player-info-modal">✕</button>
     <h2>Player Info</h2>
     
     <!-- Profile Row with ✎ Edit Pencil -->
     <div class="profile-header-card">
+      <!-- Avatar with Dual 3D Model (🧬) and Photo (📷) Badges -->
       <div class="avatar-edit-wrapper">
         <div id="info-avatar" class="info-avatar">🙂</div>
-        <button id="edit-avatar-btn" class="edit-avatar-badge" title="Change 3D Character">✎</button>
+        <button id="edit-avatar-btn" class="edit-avatar-badge badge-model" title="Change 3D Character">🧬</button>
+        <button id="upload-photo-btn" class="edit-avatar-badge badge-photo" title="Upload Custom Photo">📷</button>
       </div>
       <div class="info-name-box">
         <span id="info-name" class="info-player-name">Traveler</span>
@@ -324,6 +327,18 @@
         </div>
       </div>
     </div>
+    
+    <!-- Remote Citadel Control Hub (Global Recall) -->
+    <div class="info-citadel-remote-card" id="info-citadel-remote-card" style="display:none;">
+      <div class="remote-citadel-left">
+        <span class="remote-citadel-icon">🔮</span>
+        <div class="remote-citadel-info">
+          <strong id="remote-citadel-title">Your Stronghold</strong>
+          <span id="remote-citadel-coords" class="fine-print">[33.585, -112.015]</span>
+        </div>
+      </div>
+      <button id="remote-recall-citadel-btn" class="btn btn-secondary remote-recall-btn">📦 Recall to Bag</button>
+    </div>
 
     <!-- Google Account Linking Section -->
     <div class="info-section" id="info-google-link-section">
@@ -338,9 +353,9 @@
     <div class="info-section">
       <div class="info-section-title">PLOTS OWNED:</div>
       <div class="parcels-grid-wrap">
-        <div class="parcel-total-box">
-          <div class="parcel-icon">🏞️</div>
-          <span class="parcel-total-label">TOTAL</span>
+        <div class="parcel-total-box birds-eye-trigger" id="birds-eye-trigger-btn" title="Tap to fly to a 10-Mile Bird's Eye View of your empire!">
+          <div class="parcel-icon">🦅</div>
+          <span class="parcel-total-label">BIRD'S EYE</span>
           <strong id="info-total-plots" class="parcel-total-num">0</strong>
         </div>
 
