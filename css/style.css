@@ -1017,6 +1017,7 @@ html,body{
 .profile-header-card {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
   background: var(--panel-2);
   border: 1px solid var(--line);
@@ -2808,17 +2809,31 @@ html,body{
   border-color: rgba(79, 214, 196, 0.4) !important;
 }
 
+/* Live Unread Chat Message Counter Badge */
 .chat-unread-badge {
   position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  top: -4px;
+  right: -4px;
   background: #ff4757;
-  border: 1.5px solid var(--ink);
-  box-shadow: 0 0 8px #ff4757;
-  animation: pulseDot 1.8s infinite;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 0 10px rgba(255, 71, 87, 0.85);
+  pointer-events: none;
+  animation: badgePulse 1.5s infinite alternate ease-in-out;
+  letter-spacing: -0.2px;
+}
+
+.chat-unread-badge.hidden {
+  display: none !important;
 }
 
 /* Chat Drawer Backdrop & Slide-up Container */
@@ -4022,16 +4037,19 @@ button[aria-label="Close ad"],
   box-shadow: 0 0 16px rgba(212, 175, 97, 0.45) !important;
 }
 
-/* Symmetrical Placement for 🧬 Model and 📷 Photo Badges */
+/* Symmetrical Placement: 🧬 Bottom-Left, 📷 Bottom-Right */
 .avatar-edit-badge.badge-model {
-  left: -4px !important;
+  left: -6px !important;
   right: auto !important;
   bottom: -4px !important;
+  position: absolute !important;
 }
 
 .avatar-edit-badge.badge-photo {
-  right: -4px !important;
+  right: -6px !important;
+  left: auto !important;
   bottom: -4px !important;
+  position: absolute !important;
 }
 
 /* ================= PLAYER INFO MODAL EXPANSIONS ================= */
@@ -4092,4 +4110,62 @@ button[aria-label="Close ad"],
   transform: translateY(-2px);
   border-color: var(--gold);
   box-shadow: 0 0 16px rgba(212, 175, 97, 0.4);
+}
+
+/* ================= LABELED PROFILE ACTION BUTTONS ================= */
+.info-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-action-buttons-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.profile-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(22, 32, 47, 0.9);
+  border: 1px solid var(--line);
+  color: var(--parchment);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.profile-action-btn:hover,
+.profile-action-btn:active {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+  background: rgba(34, 48, 68, 0.95);
+  box-shadow: 0 0 10px rgba(212, 175, 97, 0.3);
+}
+
+.avatar-pending-text {
+  width: 100% !important;
+  text-align: center !important;
+  color: #f0d38a !important; /* Plain flat gold/yellow */
+  font-family: var(--font-display) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  margin-top: 10px !important;
+  letter-spacing: 0.2px !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+.avatar-pending-text.hidden {
+  display: none !important;
 }
