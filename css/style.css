@@ -4007,3 +4007,46 @@ button[aria-label="Close ad"],
   color: var(--teal);
   text-shadow: 0 0 10px rgba(79, 214, 196, 0.4);
 }
+
+/* ---------- 50X Accessibility: Calm Motion (No Shaking) ---------- */
+/* Hardened Calm Mode: Instantly kills all micro-tremble animations & transforms */
+body.no-shake .hero-balance-card,
+body.no-shake .hero-balance-card.super-50x,
+body.no-shake .boost-timer-badge,
+body.no-shake .boost-timer-badge.super-50x {
+  animation: badgePulse 0.9s infinite alternate ease-in-out !important;
+  transform: none !important;
+}
+
+/* Automatic OS Reduced Motion Accessibility Support */
+@media (prefers-reduced-motion: reduce) {
+  .boost-timer-badge.super-50x,
+  .hero-balance-card.super-50x {
+    animation: badgePulse 0.9s infinite alternate ease-in-out !important;
+  }
+}
+
+/* Toggle Switch Row in Booster Modal */
+.shake-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(13, 20, 32, 0.8);
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin: 14px 0;
+}
+
+.shake-toggle-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.toggle-switch-input {
+  width: 40px;
+  height: 22px;
+  accent-color: var(--teal);
+  cursor: pointer;
+}
