@@ -89,7 +89,7 @@
     <div class="hero-balance-card" id="hero-balance-card">
       <div class="hero-top-line">
         <div class="hero-brand-title">
-          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.8.04b</span>
+          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.8.08b</span>
         </div>
         <div id="boost-timer-badge" class="boost-timer-badge hidden">⚡ 30X BOOST <span id="boost-countdown">00:00:00</span></div>
       </div>
@@ -207,7 +207,7 @@
 
   <!-- Floating Done Pill (Appears centered right above BUY LAND & EARN buttons) -->
   <div id="buy-mode-banner" class="buy-mode-banner hidden">
-    <span class="buy-mode-instruction">Tap tile to claim (100 EB)</span>
+    <span class="buy-mode-instruction">Tap tile to claim (100 EB +60/s cooldown)</span>
     <button id="exit-buy-mode-btn" class="btn btn-exit-buy">Done ✓</button>
   </div>
 
@@ -475,7 +475,7 @@
   <div class="modal-card">
     <button class="close-btn" data-close="buy-modal">✕</button>
     <h2>Claim Land</h2>
-    <p class="modal-sub">Expand your realm with a new 10x10 ft plot.</p>
+    <p class="modal-sub">Expand your realm with a new 10x10 ft plot. Please wait 60 seconds before purchasing another plot.</p>
     <div class="buy-modal-cost">
       <span>Cost</span>
       <strong>100 EB</strong>
@@ -677,6 +677,13 @@
       <div>Duration: <strong>+1 Hour</strong></div>
       <div>Max Bank: <strong>Up to 6 Hours</strong></div>
     </div>
+
+    <!-- Accessibility 50X Screen Shake Toggle -->
+    <div class="shake-toggle-row">
+      <span class="shake-toggle-label">⚡ 50X Screen Shake Effect</span>
+      <input type="checkbox" id="toggle-shake-fx" class="toggle-switch-input" checked />
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-secondary" data-close="booster-modal">Cancel</button>
       <button id="activate-boost-btn" class="btn btn-primary">Activate Boost</button>
@@ -755,10 +762,11 @@
     <!-- 50X Super Boost Event Live Countdown Card -->
     <div class="pool-countdown-card event-50x-countdown-card">
       <span id="modal-50x-label">🔥 Next 50X Super Boost In:</span>
-      <strong id="modal-50x-countdown-timer">--D : --H : --M : --s</strong>
+      <strong id="modal-50x-countdown-timer">00D : 00H : 00M : 00s</strong>
     </div>
 
     <!-- Distribution Tier Breakdown -->
+    <div class="pool-tier-box">
     <div class="pool-tiers-list">
       <div class="pool-tier-item tier-top3">
         <div class="tier-badge">🥇 1st – 🥉 3rd (50% Split)</div>
