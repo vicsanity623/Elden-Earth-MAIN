@@ -89,7 +89,938 @@
     <div class="hero-balance-card" id="hero-balance-card">
       <div class="hero-top-line">
         <div class="hero-brand-title">
-          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.7.1</span>
+          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.7.4</span>
+        </div>
+        <div id="boost-timer-badge" class="boost-timer-badge hidden">⚡ 30X BOOST <span id="boost-countdown">00:00:00</span></div>
+      </div>
+      <div class="hero-balance-value" id="stat-cash">
+        <span class="cash-dollar">$</span><span class="cash-point">.</span><span class="cash-decimal">000000000000000</span>
+      </div>
+    </div>
+
+    <!-- Secondary Stats Arranged Beneath (EB, Diamonds, Income, Menu) -->
+    <div class="substats-row">
+      <div class="player-chip">
+        <span id="player-avatar">🙂</span>
+        <span id="player-name">Loading...</span>
+      </div>
+
+      <div class="sub-stat">
+        <span class="stat-label">Elden Bucks</span>
+        <span class="stat-value" id="stat-eb">-- EB</span>
+      </div>
+
+      <div class="sub-stat">
+        <span class="stat-label">Diamonds</span>
+        <span class="stat-value" id="stat-diamonds">0 ◆</span>
+      </div>
+
+      <div class="sub-stat">
+        <span class="stat-label">Income</span>
+        <span class="stat-value" id="stat-rate">$-.-----------/s</span>
+      </div>
+
+      <button id="menu-btn" class="icon-btn menu-btn-wrap" aria-label="Menu">
+        ☰
+        <span id="menu-unread-dot" class="menu-unread-dot hidden"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Weekly Realm Treasury Pool HUD Button (Floats above +2 EB button) -->
+  <button id="weekly-pool-hud-btn" class="weekly-pool-btn" aria-label="Weekly Dividend Pool">
+    <div class="pool-btn-inner">
+      <span class="pool-icon">👑</span>
+      <div class="pool-btn-text">
+        <span class="pool-tag">1% POOL</span>
+        <span class="pool-sub" id="hud-pool-countdown">MON 00:00</span>
+      </div>
+    </div>
+  </button>
+
+  <!-- Floating +2 EB Boost Button -->
+  <button id="boost-btn" class="boost-btn hidden">
+    <span class="boost-icon">⚡</span>
+    <span class="boost-text">+2 EB</span>
+  </button>
+
+  <!-- Permanent 30X/50X Multiplier Button -->
+  <button id="multiplier-btn" class="multiplier-btn">
+    <span class="mult-tag" id="mult-label">30X</span>
+    <span class="mult-sub">BOOST</span>
+  </button>
+
+  <!-- Unified Side HUD Stack (Extractor + Leaderboard + Calendar) -->
+  <div class="side-hud-stack">
+    <!-- Diamond Extractor Quick Button -->
+    <button id="extractor-hud-btn" class="side-hud-btn extractor-btn hidden" aria-label="Diamond Extractor">
+      <div id="extractor-unread-dot" class="calendar-red-dot hidden"></div>
+      <div class="side-hud-card extractor-hud-card">
+        <svg viewBox="0 0 32 38" class="extractor-hud-svg">
+          <polygon points="16,2 29,12 16,16 3,12" fill="#d4fbf6"/>
+          <polygon points="3,12 16,16 16,36" fill="#1d7a6e"/>
+          <polygon points="29,12 16,16 16,36" fill="#4fd6c4"/>
+          <polygon points="16,2 20,8 16,16 12,8" fill="#ffffff"/>
+        </svg>
+      </div>
+      <span class="side-hud-subtext">Mine</span>
+    </button>
+
+    <!-- Leaderboard Button -->
+    <button id="leaderboard-btn" class="side-hud-btn leaderboard-btn" aria-label="Leaderboards">
+      <div class="side-hud-card trophy-card">
+        <span class="trophy-emoji">🏆</span>
+      </div>
+      <span class="side-hud-subtext">Ranks</span>
+    </button>
+
+    <!-- Daily Login Calendar Button -->
+    <button id="calendar-btn" class="side-hud-btn calendar-btn" aria-label="Daily Calendar">
+      <div id="calendar-unread-dot" class="calendar-red-dot hidden"></div>
+      <div class="side-hud-card calendar-icon-card">
+        <div class="cal-card-top" id="cal-hud-month">SEP</div>
+        <div class="cal-card-body" id="cal-hud-day">4</div>
+      </div>
+    </button>
+  </div>
+
+  <!-- Permanent Collapsable Worldwide Feed Card -->
+  <div id="live-feed-card" class="live-feed-card">
+    <div id="feed-interactive-header" class="feed-header-line" title="Tap to toggle feed">
+      <div class="feed-title-wrap">
+        <span class="feed-badge">Feed:</span>
+        <span class="feed-dot"></span>
+        <span id="feed-unread-badge" class="feed-unread-pill hidden">0</span>
+      </div>
+      <button id="feed-toggle-icon" class="feed-toggle-btn" aria-label="Toggle Feed">▴</button>
+    </div>
+    <div id="feed-scroll-container" class="feed-scroll-container">
+      <div class="feed-empty-msg">Connecting to live feed...</div>
+    </div>
+  </div>
+
+  <!-- Floating Done Pill (Appears centered right above BUY LAND & EARN buttons) -->
+  <div id="buy-mode-banner" class="buy-mode-banner hidden">
+    <span class="buy-mode-instruction">Tap tile to claim (100 EB)</span>
+    <button id="exit-buy-mode-btn" class="btn btn-exit-buy">Done ✓</button>
+  </div>
+
+  <!-- Bottom bar with Community Chat Button -->
+  <div id="bottombar">
+    <button id="recenter-btn" class="round-btn" aria-label="Reset North">🧭</button>
+    <button id="buy-land-mode-btn" class="btn btn-buy-land">Buy Land</button>
+    <button id="earn-btn" class="btn btn-earn">Earn</button>
+    <button id="land-btn" class="round-btn" aria-label="My Land">▦</button>
+    <button id="chat-hud-btn" class="round-btn chat-hud-btn" aria-label="Community Chat">
+      💬
+      <span id="chat-unread-badge" class="chat-unread-badge hidden"></span>
+    </button>
+  </div>
+
+  <!-- Game Treasury Bottom Ad Banner (320x50 Mobile Strip with 60s Auto-Refresh) -->
+  <div id="treasury-ad-container" class="treasury-ad-container">
+    <ins class="adsbygoogle"
+         style="display:inline-block;width:320px;height:50px"
+         data-ad-client="ca-pub-5972331036113330"
+         data-ad-slot="4287691766"></ins>
+  </div>
+</div>
+
+<!-- ===================== SPIN WHEEL MODAL ===================== -->
+<div id="wheel-modal" class="modal hidden">
+  <div class="modal-card wheel-card">
+    <button class="close-btn" data-close="wheel-modal">✕</button>
+    <h2>Diamond Wheel</h2>
+    <p class="modal-sub">2 <span class="hud-gem-icon"></span> per spin</p>
+
+
+    <!-- Live Player Balances Inside Wheel -->
+    <div class="wheel-balance-bar">
+      <div class="wheel-chip eb-chip">
+        <span class="wheel-chip-label">Elden Bucks</span>
+        <strong id="wheel-eb-display" class="wheel-chip-val">0 EB</strong>
+      </div>
+      <div class="wheel-chip diamond-chip">
+        <span class="wheel-chip-label">Diamonds</span>
+        <strong id="wheel-diamond-display" class="wheel-chip-val">0 <span class="hud-gem-icon"></span></strong>
+      </div>
+    </div>
+
+
+    <div class="wheel-wrap">
+      <div class="wheel-pointer">▼</div>
+      <canvas id="wheel-canvas" width="320" height="320"></canvas>
+    </div>
+    <button id="spin-btn" class="btn btn-primary">Spin (2 <span class="hud-gem-icon"></span>)</button>
+    <p id="wheel-result" class="wheel-result"></p>
+  </div>
+</div>
+
+<!-- ===================== LAND / STATS MODAL ===================== -->
+<div id="land-modal" class="modal hidden">
+  <div class="modal-card">
+    <button class="close-btn" data-close="land-modal">✕</button>
+    <h2>My Land</h2>
+    <div class="land-stats">
+      <div class="land-stat"><span id="land-count">-</span><label>Plots owned</label></div>
+      <div class="land-stat"><span id="land-rate">-.--------</span><label>EB / sec</label></div>
+    </div>
+    <div class="rarity-legend">
+      <div><i class="swatch common"></i>Common (<span id="count-common">-</span>) — <span id="weight-common">0</span>% — $<span id="rate-common">0</span>/s</div>
+      <div><i class="swatch rare"></i>Rare (<span id="count-rare">-</span>) — <span id="weight-rare">0</span>% — $<span id="rate-rare">0</span>/s</div>
+      <div><i class="swatch epic"></i>Epic (<span id="count-epic">-</span>) — <span id="weight-epic">0</span>% — $<span id="rate-epic">0</span>/s</div>
+      <div><i class="swatch legendary"></i>Legendary (<span id="count-legendary">-</span>) — <span id="weight-legendary">0</span>% — $<span id="rate-legendary">0</span>/s</div>
+    </div>
+    <p class="fine-print">Tap any unclaimed tile on the map (zoom in close) to buy it for 100 EB. Rarity is random and balanced.</p>
+    <p class="fine-print">Tap on a claimed land plot to relocate. (pick up) To see your (Bag) tap on any unclaimed tile.</p>
+
+  </div>
+</div>
+
+<!-- ===================== PLAYER INFO MODAL ===================== -->
+<div id="player-info-modal" class="modal hidden">
+  <div class="modal-card player-info-card">
+    <button class="close-btn" data-close="player-info-modal">✕</button>
+    <h2>Player Info</h2>
+    
+    <!-- Profile Row with ✎ Edit Pencil -->
+    <div class="profile-header-card">
+      <div class="avatar-edit-wrapper">
+        <div id="info-avatar" class="info-avatar">🙂</div>
+        <button id="edit-avatar-btn" class="edit-avatar-badge" title="Change 3D Character">✎</button>
+      </div>
+      <div class="info-name-box">
+        <span id="info-name" class="info-player-name">Traveler</span>
+        <button id="edit-name-btn" class="edit-name-badge" title="Change Player Name">✎</button>
+      </div>
+    </div>
+
+    <!-- Total Rent Accrued -->
+    <div class="info-section">
+      <div class="info-section-title">TOTAL RENT ACCRUED:</div>
+      <div class="info-cash-box">
+        <span class="cash-icon">📈</span>
+        <span id="info-total-rent" class="info-cash-val">$0.000000000000000</span>
+      </div>
+    </div>
+
+    <!-- Mayorship & Regional Dividends Section -->
+    <div class="info-section">
+      <div class="info-section-title">MAYORSHIP & DIVIDENDS:</div>
+      <div class="info-mayor-card">
+        <div class="mayor-status-row">
+          <span class="mayor-crown-pill" id="info-mayor-status">👑 Mayor of Phoenix, AZ</span>
+          <span class="dividend-rate-pill">2% Royalty</span>
+        </div>
+        <div class="mayor-dividend-row">
+          <span class="dividend-label">Lifetime Dividends Collected:</span>
+          <strong class="dividend-val" id="info-total-dividends">0 EB</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Account Linking Section -->
+    <div class="info-section" id="info-google-link-section">
+      <div class="info-section-title">ACCOUNT:</div>
+      <div class="google-link-row">
+        <span class="google-link-text">Continue on another device?</span>
+        <button id="google-link-btn" class="google-link-btn">Sign in with Google</button>
+      </div>
+    </div>
+
+    <!-- Plots / Parcels Owned Grid -->
+    <div class="info-section">
+      <div class="info-section-title">PLOTS OWNED:</div>
+      <div class="parcels-grid-wrap">
+        <div class="parcel-total-box">
+          <div class="parcel-icon">🏞️</div>
+          <span class="parcel-total-label">TOTAL</span>
+          <strong id="info-total-plots" class="parcel-total-num">0</strong>
+        </div>
+
+        <div class="rarity-badges-grid">
+          <div class="rarity-badge common">
+            <span id="info-count-common" class="badge-num">0</span>
+            <span class="badge-label">COMMON</span>
+          </div>
+          <div class="rarity-badge rare">
+            <span id="info-count-rare" class="badge-num">0</span>
+            <span class="badge-label">RARE</span>
+          </div>
+          <div class="rarity-badge epic">
+            <span id="info-count-epic" class="badge-num">0</span>
+            <span class="badge-label">EPIC</span>
+          </div>
+          <div class="rarity-badge legendary">
+            <span id="info-count-legendary" class="badge-num">0</span>
+            <span class="badge-label">LEGENDARY</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CHARACTER WARDROBE MODAL ===================== -->
+<div id="wardrobe-modal" class="modal hidden">
+  <div class="modal-card">
+    <button class="close-btn" data-close="wardrobe-modal">✕</button>
+    <h2>3D Wardrobe</h2>
+    <p class="modal-sub">Select your 3D explorer model.</p>
+    <div id="wardrobe-grid" class="wardrobe-grid"></div>
+  </div>
+</div>
+
+<!-- ===================== DIAMOND EXTRACTOR MODAL ===================== -->
+<div id="extractor-modal" class="modal hidden">
+  <div class="modal-card extractor-card">
+    <button class="close-btn" data-close="extractor-modal">✕</button>
+    <div class="extractor-glow-icon">
+      <svg viewBox="0 0 32 38" style="width:38px;height:46px;display:inline-block;filter:drop-shadow(0 0 10px #4fd6c4);">
+        <polygon points="16,2 29,12 16,16 3,12" fill="#d4fbf6"/>
+        <polygon points="3,12 16,16 16,36" fill="#1d7a6e"/>
+        <polygon points="29,12 16,16 16,36" fill="#4fd6c4"/>
+        <polygon points="16,2 20,8 16,16 12,8" fill="#ffffff"/>
+      </svg>
+    </div>
+    <h2>Diamond Extractor</h2>
+    <p class="modal-sub">Automated mining beacon for your home base.</p>
+
+    <!-- State: Not Built Yet -->
+    <div id="extractor-unbuilt-view" class="extractor-view hidden">
+      <div class="extractor-status-box">
+        <p>Construct an automated extractor on your territory to harvest free diamonds while offline.</p>
+        <div class="req-line">Requirements: <strong>5+ Connected Plots (Limit 1 Base)</strong></div>
+        <div class="req-line">Build Cost: <strong>50 EB</strong></div>
+      </div>
+      <button id="build-extractor-btn" class="btn btn-primary">Build Extractor (50 EB)</button>
+    </div>
+
+    <!-- State: Active & Mining -->
+    <div id="extractor-active-view" class="extractor-view hidden">
+      <div class="extractor-level-header">
+        <span class="extractor-level-pill" id="extractor-lvl-badge">Level 1</span>
+        <span class="extractor-next-perk" id="extractor-next-perk">Next: -0.0001% Mining Time</span>
+      </div>
+
+      <div class="extractor-status-box">
+        <div class="stat-row">
+          <span>Status:</span>
+          <strong class="teal-text">⚡ Mining Active</strong>
+        </div>
+        <div class="stat-row">
+          <span>Rate:</span>
+          <strong>1 <span class="hud-gem-icon"></span> / 10 Mins</strong>
+        </div>
+        <div class="stat-row">
+          <span>Next Diamond In:</span>
+          <strong id="extractor-next-timer" class="gold-text">00:10:00</strong>
+        </div>
+        <div class="stat-row">
+          <span>Ready to Collect:</span>
+          <strong id="extractor-stored-count" class="diamond-ready-val">0 / 50 <span class="hud-gem-icon"></span></strong>
+        </div>
+      </div>
+
+      <!-- $1.00 Unlockable Upgrade Button -->
+      <button id="upgrade-extractor-btn" class="btn btn-primary btn-extractor-upgrade" style="margin-bottom: 10px;">
+        ⚡ Upgrade ($1.00)
+      </button>
+      <div id="extractor-locked-notice" class="extractor-locked-notice hidden">
+        🔒 Reach $1.00 Cash Balance to unlock Extractor Upgrades!
+      </div>
+
+      <button id="collect-extractor-btn" class="btn btn-primary">Collect All (0 <span class="hud-gem-icon"></span>)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CONFIRM BUY MODAL ===================== -->
+<div id="buy-modal" class="modal hidden">
+  <div class="modal-card">
+    <button class="close-btn" data-close="buy-modal">✕</button>
+    <h2>Claim Land</h2>
+    <p class="modal-sub">Expand your realm with a new 10x10 ft plot.</p>
+    <div class="buy-modal-cost">
+      <span>Cost</span>
+      <strong>100 EB</strong>
+    </div>
+    <div class="modal-actions">
+      <button id="buy-cancel-btn" class="btn btn-secondary">Cancel</button>
+      <button id="plot-bag-btn" class="btn btn-primary" style="display:none;">Bag</button>
+      <button id="plant-capsule-confirm-btn" class="btn btn-primary" style="display:none; background: linear-gradient(180deg, #a86ee0, #6c5ce7); color: #fff;">🔮 Plant Citadel (Free)</button>
+      <button id="buy-confirm-btn" class="btn btn-primary">Claim Tile</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PLOT RELOCATION MODAL ===================== -->
+<div id="plot-modal" class="modal hidden">
+  <div class="modal-card citadel-chamber-card">
+    <button class="close-btn" data-close="plot-modal">✕</button>
+    <div class="citadel-relocate-wrap" id="plot-relocate-wrap">
+      <button id="plot-relocate-btn" class="citadel-relocate-btn" type="button">Relocate</button>
+    </div>
+    <div class="citadel-chamber-header">
+      <span class="citadel-badge-pill" id="plot-modal-rarity">COMMON PLOT</span>
+      <h2 id="plot-modal-name">Owned Plot</h2>
+      <p class="modal-sub" id="plot-modal-coords">Coordinates: [0, 0]</p>
+    </div>
+    <div class="citadel-stats-box">
+      <div class="stat-row"><span>Mining Rate:</span><strong id="plot-modal-rate" class="teal-text">0 EB / sec</strong></div>
+      <div class="stat-row"><span>Location:</span><strong id="plot-modal-location" class="gold-text">Unknown</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== PLOT BAG MODAL ===================== -->
+<div id="plot-bag-modal" class="modal hidden">
+  <div class="modal-card citadel-chamber-card">
+    <button class="close-btn" data-close="plot-bag-modal">✕</button>
+    <div class="citadel-chamber-header">
+      <span class="citadel-badge-pill">PLOT BAG</span>
+      <h2>Select a Plot</h2>
+      <p class="modal-sub">Choose a plot to relocate to this tile.</p>
+    </div>
+    <div class="modal-actions" id="plot-bag-items"></div>
+  </div>
+</div>
+
+<!-- ===================== REALM GUIDE / HOW TO PLAY MODAL ===================== -->
+<div id="menu-modal" class="modal hidden">
+  <div class="modal-card guide-modal-card">
+    <button class="close-btn" data-close="menu-modal">✕</button>
+    <div class="guide-header-icon">📜</div>
+    <h2>How to Play</h2>
+    <p class="modal-sub">Become the Lord of the Realm</p>
+
+    <!-- Cash Out Teaser Banner -->
+    <div class="cashout-teaser-card">
+      <div class="cashout-icon">💵</div>
+      <div class="cashout-info">
+        <strong>Cash Out Coming Soon!</strong>
+        <span>Real PayPal and others / cashout options are self-funded by community game treasury ad revenue!</span>
+      </div>
+    </div>
+
+    <!-- Step-by-Step Guide Cards -->
+    <div class="guide-steps-list">
+      
+      <div class="guide-card">
+        <div class="guide-card-icon">💎</div>
+        <div class="guide-card-text">
+          <strong>1. Collect 3D Diamonds by:</strong>
+          <span>Walking, Mining, and Spinning the wheel!</span>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-card-icon">🎰</div>
+        <div class="guide-card-text">
+          <strong>2. Spin the Diamond Wheel</strong>
+          <span>Spend diamonds on the Earn Wheel for Elden Bucks (EB). Hit jackpots of 25 EB or 50 EB!</span>
+          <span>You might get lucky and hit Jackpot on Diamonds too!</span>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-card-icon">🗺️</div>
+        <div class="guide-card-text">
+          <strong>3. Claim Real 10×10 ft Parcels</strong>
+          <span>Tap <strong>BUY LAND</strong> to swoop into flat 2D view. Claim any tile within your radius for 100 EB!</span>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-card-icon">📈</div>
+        <div class="guide-card-text">
+          <strong>4. Passive Rent ($USD) Forever</strong>
+          <span>Every tile earns real-time cash every 0.5s, ticking even when the app is completely closed. <strong>REFRESH</strong> your game or browser tab to stay updated.</span>
+          <strong>search google on how to hard refresh browser. Game changer for browser games!</strong>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-card-icon">⚡</div>
+        <div class="guide-card-text">
+          <strong>5. Keep 30X Boost Active</strong>
+          <span>Tap the glowing <strong>30X BOOST and the 50X</strong> button to stack up to 6 hours of supercharged 30X and 50X rent earnings.</span>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-card-icon">⛏️</div>
+        <div class="guide-card-text">
+          <strong>6. Automated Diamond Extractor</strong>
+          <span>Own <strong>5+ connected plots</strong> to construct your Extractor base! Automatically mines free diamonds while you sleep. After you reach 1.00 balance Upgrade it with your Cash Balance to mine faster!</span>
+        </div>
+      </div>
+
+      <div class="guide-card">
+        <div class="guide-card-icon">👑</div>
+        <div class="guide-card-text">
+          <strong>7. Become Mayor Governor and or President & Earn 2% Dividends</strong>
+          <span>Own the most land in any city to claim the Mayor crown and earn a 2% dividend on all land bought by other players!</span>
+        </div>
+      </div>
+      
+      <div class="guide-card">
+        <div class="guide-card-icon">🙋‍♂️❓</div>
+        <div class="guide-card-text">
+          <strong>8. More to come...</strong>
+          <span>Share your feedback and you might see your suggestion added to the roadmap.</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Elden Earth Discord & Support Card -->
+    <a href="https://discord.gg/8Wp6WewUy" target="_blank" rel="noopener noreferrer" class="community-support-card">
+      <div class="community-icon-wrap">👾</div>
+      <div class="community-content">
+        <div class="comm-badge">Official Elden Earth Discord</div>
+        <strong>Join and connect with other players and get supoort.</strong>
+      </div>
+      <div class="community-arrow">➔</div>
+    </a>
+
+    <!-- Audio toggle -->
+    <div class="audio-toggle-wrap" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(-- divider, #3a4b5c);">
+      <label class="toggle-label" style="font-size: 13px; color: var(--text-muted, #8892a2);">Sound</label>
+      <input type="checkbox" id="audio-toggle" class="toggle-input">
+    </div>
+
+    <button class="btn btn-primary" data-close="menu-modal" style="margin-top: 14px;">Got It! Let's Play</button>
+    <button id="reset-btn" class="btn btn-danger" style="margin-top: 10px; font-size: 13px; padding: 10px;">Reset Device Save Data</button>
+  </div>
+</div>
+
+<!-- ===================== REALM COMMUNITY CHAT DRAWER ===================== -->
+<div id="chat-drawer" class="chat-drawer hidden">
+  <div class="chat-drawer-overlay" id="chat-drawer-overlay"></div>
+  <div class="chat-drawer-panel">
+    
+    <!-- Chat Header with Live Online Counter -->
+    <div class="chat-header">
+      <div class="chat-header-title">
+        <span class="chat-live-pulse"></span>
+        <h3>Realm Global Chat</h3>
+      </div>
+      
+      <!-- Live Online Count Badge -->
+      <div class="chat-online-wrap">
+        <span class="chat-online-label">ONLINE:</span>
+        <strong id="chat-online-count" class="chat-online-count">1</strong>
+      </div>
+
+      <button id="close-chat-btn" class="chat-close-btn">✕</button>
+    </div>
+
+    <!-- Messages Container (Last 25 Messages) -->
+    <div id="chat-messages-list" class="chat-messages-list">
+      <div class="chat-system-msg">Connecting to Realm Global Chat...</div>
+    </div>
+
+    <!-- Chat Input Footer -->
+    <div class="chat-footer">
+      <input type="text" id="chat-input" class="chat-input" name="realm-chat-message" placeholder="Say something to the realm..." maxlength="120" autocomplete="new-password" autocapitalize="sentences" autocorrect="on" spellcheck="true" inputmode="text" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" />
+      <button id="chat-send-btn" class="chat-send-btn">➤</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== BOOSTER MODAL ===================== -->
+<div id="booster-modal" class="modal hidden">
+  <div class="modal-card booster-card">
+    <button class="close-btn" data-close="booster-modal">✕</button>
+    <div class="booster-icon-wrap">⚡</div>
+    <h2 id="booster-modal-title">Activate 30X Boost</h2>
+    <p class="modal-sub">Supercharge your realm's income for 1 hour!</p>
+    <div class="booster-info-box">
+      <div>Multiplier: <strong id="modal-mult-rate" class="gold-text">30X Income</strong></div>
+      <div>Duration: <strong>+1 Hour</strong></div>
+      <div>Max Bank: <strong>Up to 6 Hours</strong></div>
+    </div>
+
+    <!-- Accessibility 50X Screen Shake Toggle -->
+    <div class="shake-toggle-row">
+      <span class="shake-toggle-label">⚡ 50X Screen Shake Effect</span>
+      <input type="checkbox" id="toggle-shake-fx" class="toggle-switch-input" checked />
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-close="booster-modal">Cancel</button>
+      <button id="activate-boost-btn" class="btn btn-primary">Activate Boost</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LEADERBOARD & MAYORS MODAL ===================== -->
+<div id="leaderboard-modal" class="modal hidden">
+  <div class="modal-card leaderboard-modal-card">
+    <button class="close-btn" data-close="leaderboard-modal">✕</button>
+    <div class="leaderboard-header">
+      <span class="lb-header-trophy">🏆</span>
+      <h2>Realm Rankings</h2>
+      <p class="modal-sub">Top Landlords, Earners & Reigning Mayors</p>
+    </div>
+
+    <!-- Atlas-Earth Style Territory Scope Bar (Global, Country, State, City) -->
+    <div class="lb-scope-row" id="lb-scope-row">
+      <button class="lb-scope-btn active" data-scope="global" title="Global Rankings">🌐 Global</button>
+      <button class="lb-scope-btn" data-scope="country" title="Country Rankings">🇺🇸 Country</button>
+      <button class="lb-scope-btn" data-scope="state" title="State Rankings">🏛️ State</button>
+      <button class="lb-scope-btn" data-scope="city" title="City Rankings">🏘️ City</button>
+    </div>
+
+    <!-- Metric Tabs (Plots vs Rent) -->
+    <div class="lb-tabs-row">
+      <button class="lb-tab-btn active" data-tab="plots">🗺️ Plots Owned</button>
+      <button class="lb-tab-btn" data-tab="rent">💰 Passive Rent</button>
+    </div>
+
+    <!-- Scrollable Leaderboard List -->
+    <div id="leaderboard-list" class="leaderboard-list">
+      <div class="feed-empty-msg">Loading realm rankings...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== WEEKLY REALM DIVIDEND POOL MODAL ===================== -->
+<div id="weekly-pool-modal" class="modal hidden">
+  <div class="modal-card weekly-pool-card">
+    <button class="close-btn" data-close="weekly-pool-modal">✕</button>
+    
+    <div class="pool-header">
+      <div class="pool-glow-crown">👑</div>
+      <h2>Weekly Realm Treasury</h2>
+      <p class="modal-sub">1% of all Global Rent distributed every Monday at 12:00 AM</p>
+    </div>
+
+    <!-- Live Global Rent & Pool Stats -->
+    <div class="pool-hero-stats-wrap">
+      <div class="pool-hero-stats">
+        <div class="pool-stat-col">
+          <span class="pool-stat-label">TOTAL GLOBAL RENT ACCRUED</span>
+          <strong id="modal-global-rent-val" class="pool-stat-cash">$-.------</strong>
+        </div>
+        <div class="pool-stat-divider"></div>
+        <div class="pool-stat-col">
+          <span class="pool-stat-label">1% WEEKLY DIVIDEND POOL</span>
+          <strong id="modal-weekly-pool-val" class="pool-stat-pool">$-.------</strong>
+        </div>
+      </div>
+      <!-- Global Velocity / Economy Rate -->
+      <div class="pool-global-rate">
+        <span class="rate-label">REALM ECONOMY VELOCITY:</span>
+        <strong id="modal-global-rate-val" class="rate-val">+$-.---------- / sec</strong>
+      </div>
+    </div>
+
+    <!-- Live Countdown Bars -->
+    <div class="pool-countdown-card">
+      <span>⏳ Next Distribution In:</span>
+      <strong id="modal-pool-countdown-timer">--D : --H : --M : --s</strong>
+    </div>
+
+    <!-- 50X Super Boost Event Live Countdown Card -->
+    <div class="pool-countdown-card event-50x-countdown-card">
+      <span id="modal-50x-label">🔥 Next 50X Super Boost In:</span>
+      <strong id="modal-50x-countdown-timer">00D : 00H : 00M : 00s</strong>
+    </div>
+
+    <!-- 50X Motion Sensitivity Accessibility Toggle -->
+    <div class="shake-toggle-row">
+      <span class="shake-toggle-label">⚡ 50X Screen Shake Effect</span>
+      <input type="checkbox" id="toggle-shake-fx" class="toggle-switch-input" checked />
+    </div>
+
+    <!-- Distribution Tier Breakdown -->
+    <div class="pool-tiers-list">
+      <div class="pool-tier-item tier-top3">
+        <div class="tier-badge">🥇 1st – 🥉 3rd (50% Split)</div>
+        <div class="tier-desc">1st: <strong>25%</strong> | 2nd: <strong>15%</strong> | 3rd: <strong>10%</strong> of Weekly Pool</div>
+      </div>
+      <div class="pool-tier-item tier-top10">
+        <div class="tier-badge">🏅 4th – 10th Place (50% Split)</div>
+        <div class="tier-desc">The remaining 7 Top Landlords split the other 50% (~7.14% each)</div>
+      </div>
+    </div>
+
+    <p class="fine-print">Rankings are determined by Total Land Plots & Accrued Rent on the Global Leaderboard at Monday 12:00 AM UTC. Realm Economy Velocity and Weekly Pool ignores temporary 30X/50X personal boost multipliers.</p>
+  </div>
+</div>
+
+<!-- ===================== MONDAY REWARD CELEBRATION MODAL ===================== -->
+<div id="weekly-reward-modal" class="modal hidden">
+  <div class="modal-card weekly-reward-card">
+    <button class="close-btn" data-close="weekly-reward-modal">✕</button>
+    <div class="reward-fireworks-icon">🎉</div>
+    <h2>Weekly Dividend Awarded!</h2>
+    <p class="modal-sub" id="reward-payout-week-label">For your reign in the Top 10 Global Landlords</p>
+
+    <div class="reward-payout-box">
+      <div class="reward-rank-badge" id="reward-user-rank">🥇 Rank #1 Global</div>
+      <div class="reward-amount-line">
+        <span class="reward-label">Your 1% Dividend Share:</span>
+        <strong id="reward-user-cash" class="reward-cash-val">+$0.050000</strong>
+      </div>
+    </div>
+
+    <button id="claim-weekly-reward-btn" class="btn btn-primary" style="margin-top: 14px; font-size: 16px;">
+      Claim Weekly Royal Dividend! ➔
+    </button>
+  </div>
+</div>
+
+<!-- ===================== SINGLE ACTIVE SESSION CONFLICT MODAL ===================== -->
+<div id="session-conflict-modal" class="modal hidden" style="z-index: 99999;">
+  <div class="modal-card session-conflict-card">
+    <div class="session-conflict-icon">📱 ➔ 💻</div>
+    <h2>Active on Another Device</h2>
+    <p class="modal-sub">Elden Earth was opened on another device or browser tab.</p>
+    
+    <div class="session-conflict-info">
+      <p>To protect your cloud account from data conflicts, this session has been paused.</p>
+    </div>
+
+    <button id="resume-session-btn" class="btn btn-primary" style="margin-top: 14px;">
+      ⚡ Resume Session Here
+    </button>
+  </div>
+</div>
+
+<!-- ===================== 30-DAY DAILY LOGIN CALENDAR MODAL ===================== -->
+<div id="calendar-modal" class="modal hidden">
+  <div class="modal-card calendar-modal-card">
+    <button class="close-btn" data-close="calendar-modal">✕</button>
+    <div class="calendar-modal-header">
+      <span class="cal-modal-icon">📅</span>
+      <h2>Daily Rewards</h2>
+      <p class="modal-sub">Log in daily to claim scaling Elden Bucks!</p>
+    </div>
+    <div id="calendar-days-list" class="calendar-days-list">
+      <!-- Generated dynamically in main.js -->
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAPSULE DISCOVERY MODAL ===================== -->
+<div id="capsule-reward-modal" class="modal hidden">
+  <div class="modal-card capsule-reward-card">
+    <button class="close-btn" data-close="capsule-reward-modal">✕</button>
+    <div class="capsule-glow-icon" id="capsule-reward-icon">🔮</div>
+    <h2 id="capsule-reward-title">Ancient Capsule Unlocked!</h2>
+    <p class="modal-sub">You have reached the $0.01 balance milestone.</p>
+    
+    <div class="capsule-info-card" id="capsule-info-card">
+      <div class="capsule-rarity-badge" id="capsule-rarity-badge">EPIC CAPSULE</div>
+      <p id="capsule-desc-text">Plant this permanent 3D Dyson Sphere Citadel on any unowned territory to claim your stronghold!</p>
+    </div>
+
+    <button id="plant-capsule-btn" class="btn btn-primary" style="margin-top: 14px;">Plant Citadel on Map ➔</button>
+  </div>
+</div>
+
+<!-- ===================== CITADEL CHAMBER MODAL ===================== -->
+<div id="citadel-modal" class="modal hidden">
+  <div class="modal-card citadel-chamber-card">
+    <button class="close-btn" data-close="citadel-modal">✕</button>
+    <div class="citadel-relocate-wrap" id="citadel-relocate-wrap" hidden>
+      <button id="citadel-relocate-btn" class="citadel-relocate-btn" type="button">
+        Relocate
+      </button>
+    </div>
+    
+    <div class="citadel-chamber-header">
+      <span class="citadel-badge-pill" id="citadel-modal-rarity">EPIC CITADEL</span>
+      <h2 id="citadel-modal-name">Phoenix Hold</h2>
+      <p class="modal-sub" id="citadel-modal-coords">Coordinates: [33.4484, -112.0740]</p>
+    </div>
+
+    <!-- 3D Holographic Chamber View -->
+    <div class="citadel-dyson-stage">
+      <div class="dyson-outer-ring ring-a"></div>
+      <div class="dyson-outer-ring ring-b"></div>
+      <div class="dyson-core-chamber" id="citadel-defender-avatar">
+        <span>🛡️</span>
+      </div>
+    </div>
+
+    <!-- Garrison & Defense Stats -->
+    <div class="citadel-stats-box">
+      <div class="stat-row">
+        <span>Reigning Defender:</span>
+        <strong id="citadel-defender-name" class="gold-text">Empty (Unclaimed)</strong>
+      </div>
+      <div class="stat-row">
+        <span>Defense Duration:</span>
+        <strong id="citadel-defense-timer" class="teal-text">00D : 00H : 00M : 00s</strong>
+      </div>
+      <div class="stat-row">
+        <span>Banked Spoils:</span>
+        <strong id="citadel-banked-spoils" class="gold-text">0 <span class="hud-gem-icon"></span> & 0 EB</strong>
+      </div>
+    </div>
+
+    <!-- Hold Mining Rate & Siege Rules Guide -->
+    <div class="citadel-guide-box">
+      <div class="guide-title">🏛️ HOLD REWARDS & SIEGE RULES</div>
+      <p id="citadel-rate-desc">Mining Rate: 1 Diamond every 1 Hour (+60% EB chance/hr)</p>
+      <span class="guide-rules-hint"><strong>How to Overtake:</strong> Walk within 100m, spend 1 Diamond to initiate a Reflex Siege, and win the duel to dethrone the defender and earn a +5 EB bounty!</span>
+    </div>
+
+    <!-- Action Buttons (Dynamically switches based on status) -->
+    <div class="modal-actions" id="citadel-actions-wrap">
+      <!-- Injected dynamically in citadels.js -->
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CITADEL UPGRADE FORGE MODAL ===================== -->
+<div id="citadel-upgrade-modal" class="modal hidden">
+  <div class="modal-card citadel-upgrade-card">
+    <button class="close-btn" data-close="citadel-upgrade-modal">✕</button>
+    <div class="forge-icon">⚡</div>
+    <h2>Citadel Upgrade Forge</h2>
+    <p class="modal-sub">Evolve your stronghold to the next power tier!</p>
+
+    <!-- Evolution Tier Comparison Card -->
+    <div class="forge-comparison-box">
+      <div class="forge-tier-col">
+        <span class="forge-col-sub">Current Tier</span>
+        <strong id="forge-current-tier" class="forge-tier-badge">Common Hold</strong>
+        <span id="forge-current-perk" class="forge-perk-text">1 ◆ / 3 hrs</span>
+      </div>
+      <div class="forge-arrow">➔</div>
+      <div class="forge-tier-col">
+        <span class="forge-col-sub">Next Tier</span>
+        <strong id="forge-next-tier" class="forge-tier-badge">Rare Hold</strong>
+        <span id="forge-next-perk" class="forge-perk-text">1 ◆ / 2 hrs & +1 EB/hr</span>
+      </div>
+    </div>
+
+    <div class="forge-timer-notice">
+      <span>⏳ 10-Minute Evolution countdown will begin upon forging!</span>
+    </div>
+
+    <!-- Dual Payment Choice -->
+    <div class="forge-payment-actions">
+      <button id="forge-pay-eb-btn" class="btn btn-primary forge-btn-eb">
+        Forge with <span id="forge-cost-eb">75</span> EB
+      </button>
+      <button id="forge-pay-diamonds-btn" class="btn btn-primary forge-btn-diamonds">
+        Forge with <span id="forge-cost-diamonds">15</span> <span class="hud-gem-icon"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SIEGE REFLEX COMBAT MODAL ===================== -->
+<div id="siege-modal" class="modal hidden">
+  <div class="modal-card siege-card">
+    <button class="close-btn" data-close="siege-modal">✕</button>
+    <div class="siege-header">
+      <h2>⚔️ Breach the Citadel!</h2>
+      <p class="modal-sub">Time your strike inside the gold zone to shatter the shield!</p>
+    </div>
+
+    <!-- Defender Health Shield -->
+    <div class="shield-hp-wrap">
+      <div class="shield-hp-labels">
+        <span>Defender Shield</span>
+        <strong id="siege-hp-text">100 / 100 HP</strong>
+      </div>
+      <div class="shield-hp-bar-outer">
+        <div id="siege-hp-bar" class="shield-hp-bar-inner"></div>
+      </div>
+    </div>
+
+    <!-- Reflex Timing Gauge -->
+    <div class="reflex-gauge-container">
+      <div class="reflex-sweet-spot"></div>
+      <div class="reflex-needle" id="reflex-needle"></div>
+    </div>
+
+    <button id="siege-strike-btn" class="btn btn-primary" style="margin-top: 18px; font-size: 17px;">⚔️ STRIKE!</button>
+  </div>
+</div>
+
+<div id="signout-wrap" style="display:none">
+  <button id="signout-btn">Sign out</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<!-- Firebase SDKs (Global Compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+
+<script src="js/config.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/diamonds.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/loading.js"></script>
+<script src="js/character.js"></script>
+<script src="js/wheel.js"></script>
+<script src="js/feed.js"></script>
+<script src="js/leaderboard.js"></script>
+<script src="js/foliage.js"></script>
+<script src="js/citadels.js"></script>
+<script src="js/pool.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/main.js"></script>
+
+<!-- Service Worker Registration with Instant Auto-Update -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((reg) => {
+        // Check for updates every time page is opened
+        reg.update();
+        console.log('[SW] Registered & Checked for updates.');
+      })
+      .catch(err => console.warn('[SW] Registration error:', err));
+  });
+}
+</script>
+</body>
+</html>    <p class="loader-sub">Connecting to the Realm</p>
+
+    <!-- Progress Bar -->
+    <div class="loader-bar-outer">
+      <div id="loader-progress-bar" class="loader-bar-inner"></div>
+    </div>
+    
+    <div class="loader-meta-row">
+      <span id="loader-status-text" class="loader-status">> Initializing systems...</span>
+      <span id="loader-percent-text" class="loader-percent">0%</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== GAME SCREEN ===================== -->
+<div id="game-screen" class="screen hidden">
+
+  <!-- Top status bar -->
+  <div id="topbar">
+    <!-- Hero Simulated Cash Balance Bar -->
+    <div class="hero-balance-card" id="hero-balance-card">
+      <div class="hero-top-line">
+        <div class="hero-brand-title">
+          <span class="hero-brand-gem">◆</span> ELDEN EARTH <span class="hero-version-tag">v0.1.7.20b</span>
         </div>
         <div id="boost-timer-badge" class="boost-timer-badge hidden">⚡ 30X BOOST <span id="boost-countdown">00:00:00</span></div>
       </div>
