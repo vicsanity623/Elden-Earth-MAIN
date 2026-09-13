@@ -787,6 +787,10 @@
     }
 
     updateTopbar();
+    // Automatically claim all territory royalties deposited while offline!
+    if (typeof Leaderboard !== "undefined" && Leaderboard.claimPendingDividends) {
+      setTimeout(() => Leaderboard.claimPendingDividends(), 2500);
+    }
 
     // High-Performance Ticker: Calculates exact delta & saves locally without network thrashing
     let lastTickTime = Date.now();
