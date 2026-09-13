@@ -497,5 +497,15 @@ const Leaderboard = (() => {
     });
   }
 
-  return { init, open, fetchRankings, awardTerritoryDividends, awardMayorshipDividend: awardTerritoryDividends };
+  // Get active territory rulers for a specific city/state/country
+  function getLocalTerritoryRulers(city, stateName, country) {
+    if (!cachedData) return { mayor: null, governor: null, president: null };
+    return {
+      mayor: cachedData.mayorsMap?.[city] || null,
+      governor: cachedData.governorsMap?.[stateName] || null,
+      president: cachedData.presidentsMap?.[country] || null
+    };
+  }
+
+  return { init, open, render, fetchRankings, awardTerritoryDividends, claimPendingDividends, getLocalTerritoryRulers };
 })();
