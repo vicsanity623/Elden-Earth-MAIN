@@ -1594,7 +1594,7 @@
       }
 
       state.diamonds = Math.max(0, (Number(state.diamonds) || 0) - cost);
-      Store.save();
+      Store.save(true); // Forces IMMEDIATE lock to disk & Google Cloud before wheel turns!
       updateTopbar();
       el("spin-btn").disabled = true;
       el("wheel-result").textContent = "Spinning...";
@@ -1647,7 +1647,7 @@
           launchFlyingEBStream(originX, originY, winAmount);
         }
 
-        Store.save();
+        Store.save(true); // Forces IMMEDIATE lock to disk & Google Cloud so jackpots are NEVER lost!
         updateTopbar();
         el("spin-btn").disabled = false;
       });
