@@ -35,6 +35,18 @@ const Grid = (() => {
 
   function promptBuyTile(tx, ty) {
     const state = Store.get();
+
+    // ⏳ 60-Second Land Purchase Cooldown (Stops rapid spam & refresh exploits)
+    const now = Date.now();
+    const BUY_COOLDOWN_MS = 60000; // 1 Minute Cooldown
+    const lastBuy = state.lastLandPurchaseAt || 0;
+    if (now - lastBuy < BUY_COOLDOWN_MS) {
+      const remSec = Math.ceil((BUY_COOLDOWN_MS - (now - lastBuy)) / 1000);
+      const toast = window.showToast || alert;
+      toast(`⏳ Land Registry Cooldown: Please wait ${remSec}s before claiming your next parcel.`, 3000);
+      return; // Block opening modal!
+    }
+
     const ts = CONFIG.TILE_SIZE_METERS || 6.096;
     const radiusM = CONFIG.DIAMOND_COLLECT_RADIUS_METERS || 75;
 
@@ -220,6 +232,9 @@ const Grid = (() => {
     const allPlots = getAllPlots();
     if (allPlots[tid] || state.eb < CONFIG.PLOT_COST_EB) return;
 
+    // ⏳ 60-Second Cooldown & EB deduction
+    const now = Date.now();
+    state.lastLandPurchaseAt = now; // Stamps purchase time for 60s cooldown!
     state.eb -= CONFIG.PLOT_COST_EB;
     const rarity = pickRarity();
 
@@ -260,7 +275,7 @@ const Grid = (() => {
 
     state.plots[tid] = plotData;
     globalPlots[tid] = plotData;
-    Store.save();
+    Store.save(true); // ⚡ Instant 0ms Cloud Save to Google Firestore!
     onBuyAttempt(true, rarity);
     render();
 

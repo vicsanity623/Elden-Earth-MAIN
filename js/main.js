@@ -183,6 +183,9 @@
     const isOtherPlayer = targetPlayerData && targetPlayerData.ownerId !== state.player.id;
     
     const name = isOtherPlayer ? (targetPlayerData.ownerName || "Traveler") : (state.player.name || "Traveler");
+    // Image Safety Review Status: Shows centered banner while pending; vanishes when approved!
+    const isPending = !isOtherPlayer && state.player?.avatarStatus === "pending";
+    if (el("avatar-pending-banner")) el("avatar-pending-banner").classList.toggle("hidden", !isPending);
     const avatar = isOtherPlayer ? (targetPlayerData.avatar || "🙂") : (state.player.avatar || "🙂");
 
     el("info-name").textContent = name;
@@ -195,10 +198,31 @@
       av.textContent = avatar || "🙂";
     }
 
-    // Only show the edit pencils on your own profile
+    // Only show the 🧬 model and 📷 photo buttons on your own profile
     const editAvatarBtn = el("edit-avatar-btn");
+    const uploadPhotoBtn = el("upload-photo-btn");
     const editNameBtn = el("edit-name-btn");
     if (editAvatarBtn) editAvatarBtn.style.display = isOtherPlayer ? "none" : "flex";
+    if (uploadPhotoBtn) {
+      if (isOtherPlayer) {
+        uploadPhotoBtn.style.display = "none";
+      } else {
+        uploadPhotoBtn.style.display = "inline-flex";
+
+        // Universal Check: If used, lock the button for everyone
+        if (state.player?.avatarUploaded) {
+          uploadPhotoBtn.innerHTML = "<span>🔒</span> Photo Locked";
+          uploadPhotoBtn.style.opacity = "0.45";
+          uploadPhotoBtn.style.cursor = "not-allowed";
+          uploadPhotoBtn.title = "One-time custom photo upload used for Early Access.";
+        } else {
+          uploadPhotoBtn.innerHTML = "<span>📷</span> Upload Photo";
+          uploadPhotoBtn.style.opacity = "1";
+          uploadPhotoBtn.style.cursor = "pointer";
+          uploadPhotoBtn.title = "Upload Custom Photo (1 time use)";
+        }
+      }
+    }
     if (editNameBtn) editNameBtn.style.display = isOtherPlayer ? "none" : "inline-flex";
 
     // Hide "Sign in with Google" button for authenticated Google players; only show for guests
@@ -211,7 +235,7 @@
 
     // Initial Rent Display (Shows Lifetime Accrued Rent, NOT spendable balance)
     let rentVal = isOtherPlayer ? 0 : (state.lifetimeRent || state.cash || 0);
-    el("info-total-rent").textContent = "$" + Number(rentVal).toFixed(15);
+    el("info-total-rent").textContent = "$" + Number(rentVal).toFixed(11);
 
     // Fetch and display the other player's live cloud earnings (including offline accumulation)
     if (isOtherPlayer && targetPlayerData.ownerId) {
@@ -242,7 +266,7 @@
               lRent = 0.854210 + offlineEarned;
             }
 
-            el("info-total-rent").textContent = "$" + Number(lRent).toFixed(15);
+            el("info-total-rent").textContent = "$" + Number(lRent).toFixed(11);
           }
         } catch (e) {
           console.warn("[PlayerInfo] Error fetching player cash:", e);
@@ -316,6 +340,40 @@
         });
       } else {
         mayorStatusEl.textContent = "🛡️ Citizen of the Realm";
+      }
+    }
+
+    // --- Permanent Stronghold Status Hub (Never Disappears!) ---
+    const remoteCard = el("info-citadel-remote-card");
+    const recallBtn = el("remote-recall-citadel-btn");
+
+    if (remoteCard) {
+      if (isOtherPlayer) {
+        remoteCard.style.display = "none"; // Hide on other players' profiles
+      } else {
+        remoteCard.style.display = "flex"; // Always visible on YOUR profile!
+
+        const myCit = (typeof Citadels !== "undefined" && Citadels.getMyCitadel) ? Citadels.getMyCitadel() : null;
+
+        if (myCit) {
+          if (el("remote-citadel-title")) el("remote-citadel-title").textContent = `${myCit.creatorName}'s Hold (${myCit.rarity.toUpperCase()})`;
+          if (el("remote-citadel-coords")) el("remote-citadel-coords").textContent = `Coords: [${myCit.lat.toFixed(3)}, ${myCit.lon.toFixed(3)}]`;
+          if (recallBtn) {
+            recallBtn.disabled = false;
+            recallBtn.innerHTML = "📦 Recall to Bag";
+            recallBtn.style.opacity = "1";
+            recallBtn.style.cursor = "pointer";
+          }
+        } else {
+          if (el("remote-citadel-title")) el("remote-citadel-title").textContent = "No Active Stronghold";
+          if (el("remote-citadel-coords")) el("remote-citadel-coords").textContent = "Capsule in bag — Plant via Buy Land!";
+          if (recallBtn) {
+            recallBtn.disabled = true;
+            recallBtn.innerHTML = "🔒 Not Planted";
+            recallBtn.style.opacity = "0.45";
+            recallBtn.style.cursor = "not-allowed";
+          }
+        }
       }
     }
   }
@@ -459,6 +517,7 @@
   
   // ---------------- 3D Map / Game Launch with Auto-Fallback ----------------
   function launchGame(coords) {
+    document.body.classList.toggle("no-shake", Boolean(Store.get()?.disableShake));
     currentPos = { lat: coords.latitude, lon: coords.longitude };
     el("locate-screen")?.classList.add("hidden");
     el("loading-screen")?.classList.add("hidden");
@@ -728,6 +787,10 @@
     }
 
     updateTopbar();
+    // Automatically claim all territory royalties deposited while offline!
+    if (typeof Leaderboard !== "undefined" && Leaderboard.claimPendingDividends) {
+      setTimeout(() => Leaderboard.claimPendingDividends(), 2500);
+    }
 
     // High-Performance Ticker: Calculates exact delta & saves locally without network thrashing
     let lastTickTime = Date.now();
@@ -1089,6 +1152,129 @@
         }
       }
     });
+
+    // 1. Remote Citadel Recall
+    el("remote-recall-citadel-btn")?.addEventListener("click", () => {
+      const activeCit = typeof Citadels !== "undefined" ? Citadels.getMyCitadel() : null;
+      if (activeCit && typeof Citadels !== "undefined") {
+        Citadels.relocateCitadel(activeCit.id);
+        closeModal("player-info-modal");
+      }
+    });
+
+    // 2. Client-Side Canvas 96x96 Photo Resizer (Zero Storage Cost)
+    const avatarInput = el("avatar-file-input");
+    el("upload-photo-btn")?.addEventListener("click", () => {
+      const state = Store.get();
+
+      // Early Access 1-Time Upload Restriction
+      if (!isAdmin && state.player?.avatarUploaded) {
+        showToast("🔒 One-time custom photo upload already used for Early Access!", 3500);
+        return;
+      }
+      avatarInput?.click();
+    });
+
+    avatarInput?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          // Off-screen Canvas Resizer: Downsamples to lightweight 96x96 thumbnail
+          const canvas = document.createElement("canvas");
+          canvas.width = 96;
+          canvas.height = 96;
+          const ctx = canvas.getContext("2d");
+
+          // Center Crop to Square
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, 96, 96);
+
+          // Compress to lightweight 80% JPEG (Under 6KB!)
+          const tinyDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          const state = Store.get();
+
+          // Universal Rule: Lock account permanently and queue for community review
+          state.player.pendingAvatar = "img:" + tinyDataUrl;
+          state.player.avatarStatus = "pending";
+          state.player.avatarUploaded = true; // 🔒 1-time upload used!
+          Store.save(true);
+
+          // Queue to Firestore for safety moderation
+          const db = Store.getDb();
+          if (db && state.player.id) {
+            db.collection("avatar_reviews").doc(state.player.id).set({
+              userId: state.player.id,
+              userName: state.player.name || "Traveler",
+              avatarData: "img:" + tinyDataUrl,
+              submittedAt: Date.now(),
+              status: "pending"
+            }).catch(e => console.warn("[Moderation] Queue notice:", e));
+          }
+
+          updatePlayerInfoModal();
+          showToast("📷 Photo submitted! Pending community safety review.", 4000);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // 3. Cinematic "Bird's Eye View" Fly-To — Player Land
+    el("birds-eye-trigger-btn")?.addEventListener("click", () => {
+      const state = Store.get();
+      closeModal("player-info-modal");
+
+      // Use the player's current screen/map location as the fly-to origin.
+      // Then center the bird's-eye view on the player's actual land/citadel.
+      const startCenter = map.getCenter();
+
+      const plots = state.plots || {};
+      const tids = Object.keys(plots);
+
+      let targetLng = startCenter.lng;
+      let targetLat = startCenter.lat;
+
+      // Calculate the center of the player's owned land.
+      if (tids.length > 0) {
+        let totalX = 0;
+        let totalY = 0;
+
+        tids.forEach(tid => {
+          const p = plots[tid];
+          totalX += parseInt(p.tx, 10);
+          totalY += parseInt(p.ty, 10);
+        });
+
+        const center = Geo.fromMercator(
+          (totalX / tids.length) * CONFIG.TILE_SIZE_METERS,
+          (totalY / tids.length) * CONFIG.TILE_SIZE_METERS
+        );
+
+        targetLat = center.lat;
+        targetLng = center.lon;
+      } else if (currentPos) {
+        // No owned plots: use the player's current GPS position.
+        targetLat = currentPos.lat;
+        targetLng = currentPos.lon;
+      }
+
+      map.flyTo({
+        center: [targetLng, targetLat],
+        zoom: 15.6,
+        pitch: 0,
+        bearing: 0,
+        duration: 1600,
+        essential: true
+      });
+
+      showToast("🦅 Bird's Eye View", 3500);
+    });
     // --- Diamond Extractor Dynamic Level Math (2-min base, up to 50 gems) ---
     function getExtractorStats(level = 1) {
       const baseInterval = CONFIG.EXTRACTOR_INTERVAL_MS || 600000; // 10 mins (600,000ms)
@@ -1277,6 +1463,36 @@
     // --- Global Multiplier 3-Day Cycle Wiring ---
     const multBtn = el("multiplier-btn");
     const activateBoostBtn = el("activate-boost-btn");
+
+    // --- Universal 50X Screen Shake Controller ---
+    function setShakePreference(disabled) {
+      const state = Store.get();
+      state.disableShake = disabled;
+      document.body.classList.toggle("no-shake", disabled);
+      
+      // Synchronize all checkboxes across all modals
+      document.querySelectorAll("#toggle-shake-fx, .toggle-switch-input").forEach((box) => {
+        box.checked = !disabled;
+      });
+
+      Store.save();
+      const toastFn = window.showToast || alert;
+      toastFn(disabled ? "🛡️ 50X Screen Shake disabled (Calm Mode)" : "🔥 50X Screen Shake enabled!", 2500);
+    }
+
+    // Restore on boot
+    const initialDisabled = Boolean(Store.get()?.disableShake);
+    document.body.classList.toggle("no-shake", initialDisabled);
+    document.querySelectorAll("#toggle-shake-fx, .toggle-switch-input").forEach((box) => {
+      box.checked = !initialDisabled;
+    });
+
+    // Delegated click listener (Guaranteed to catch clicks in Weekly Pool modal!)
+    document.addEventListener("change", (e) => {
+      if (e.target && (e.target.id === "toggle-shake-fx" || e.target.classList.contains("toggle-switch-input"))) {
+        setShakePreference(!e.target.checked);
+      }
+    });
 
     function isGlobal50XActiveNow() {
       const now = Date.now();
