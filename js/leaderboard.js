@@ -405,15 +405,16 @@ const Leaderboard = (() => {
     return `<span>${avatar || "🙂"}</span>`;
   }
 
+  // Drops royalty payouts into the global dividends mailbox
   async function awardTerritoryDividends(territory, buyerId, plotCostEB = 100) {
     if (!territory) return;
     const db = Store.getDb();
     const state = Store.get();
-    const data = await fetchRankings(true);
+    const data = await fetchRankings(false);
 
-    const mayor = data.mayorsMap[territory.city];
-    const governor = data.governorsMap[territory.state];
-    const president = data.presidentsMap[territory.country];
+    const mayor = data.mayorsMap?.[territory.city];
+    const governor = data.governorsMap?.[territory.state];
+    const president = data.presidentsMap?.[territory.country];
 
     const payouts = {};
     function addP(ruler, title, icon) {
@@ -435,17 +436,20 @@ const Leaderboard = (() => {
       if (isSelf) {
         state.eb = (Number(state.eb) || 0) + p.amount;
         state.totalDividends = (Number(state.totalDividends) || 0) + p.amount;
-        Store.save();
+        Store.save(true);
         if (typeof showToast === "function") {
           showToast(`👑 Royalty Payout! +${p.amount} EB (${p.titles.join(" + ")})!`);
         }
       } else if (db) {
-        try {
-          await db.collection("saves").doc(oid).set({
-            eb: firebase.firestore.FieldValue.increment(p.amount),
-            totalDividends: firebase.firestore.FieldValue.increment(p.amount),
-          }, { merge: true });
-        } catch (err) {}
+        // Drops payout ticket into the ruler's secure mailbox!
+        db.collection("dividends").add({
+          recipientId: oid,
+          amount: p.amount,
+          titleBadge: p.titles.join(" & "),
+          territory: territory.city,
+          claimed: false,
+          createdAt: Date.now()
+        }).catch(e => console.warn("[Dividends] Mailbox drop notice:", e));
       }
 
       if (typeof Feed !== "undefined") {
@@ -457,6 +461,45 @@ const Leaderboard = (() => {
           titleIcon: p.icons.join("")
         });
       }
+    }
+  }
+
+  // Automatically collects all royalties deposited into your mailbox while offline!
+  async function claimPendingDividends() {
+    const state = Store.get();
+    const db = Store.getDb();
+    const myId = state?.player?.id;
+    if (!db || !myId) return;
+
+    try {
+      const snap = await db.collection("dividends")
+        .where("recipientId", "==", myId)
+        .where("claimed", "==", false)
+        .get();
+
+      if (snap.empty) return;
+
+      let totalEarned = 0;
+      const batch = db.batch();
+
+      snap.forEach(doc => {
+        const d = doc.data();
+        totalEarned += (Number(d.amount) || 2);
+        batch.update(doc.ref, { claimed: true });
+      });
+
+      if (totalEarned > 0) {
+        state.eb = (Number(state.eb) || 0) + totalEarned;
+        state.totalDividends = (Number(state.totalDividends) || 0) + totalEarned;
+        Store.save(true); // Persist immediately to Google Cloud!
+
+        await batch.commit();
+
+        const toastFn = window.showToast || alert;
+        toastFn(`👑 Royal Payout! You collected +${totalEarned} EB in territory royalties while away!`, 5000);
+      }
+    } catch (e) {
+      console.warn("[Dividends] Auto-claim notice:", e);
     }
   }
 
