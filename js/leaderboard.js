@@ -1,5 +1,5 @@
 // ============================================================
-// Elden Earth — Territory-Scoped Leaderboards (Global, Country, State, City)
+// Elden Earth — Territory-Scoped Leaderboards (Multi-Language & Global)
 // ============================================================
 const Leaderboard = (() => {
   let modal = null;
@@ -8,6 +8,54 @@ const Leaderboard = (() => {
   let cachedData = null;
   let lastFetchTime = 0;
   const CACHE_TTL_MS = 60000;
+
+  // Universal Multi-Language Country Normalizer (Supports French, German, Spanish, UK, US)
+  function normalizeCountry(rawCountry, cityStr) {
+    const c = (rawCountry || "").toLowerCase();
+    const ci = (cityStr || "").toLowerCase();
+
+    // United States (English, French, German, Spanish)
+    if (c.includes("united states") || c.includes("usa") || c.includes("états-unis") || c.includes("etats-unis") || c.includes("estados unidos") || c.includes("vereinigte staaten")) {
+      return "United States 🇺🇸";
+    }
+    // United Kingdom / England (English, French)
+    if (c.includes("united kingdom") || c.includes("uk") || c.includes("england") || c.includes("grande-bretagne") || ci.includes("england") || ci.includes("uk")) {
+      return "United Kingdom 🇬🇧";
+    }
+    // France
+    if (c.includes("france") || c.includes("fr") || ci.includes("france")) {
+      return "France 🇫🇷";
+    }
+    // Germany (English, German)
+    if (c.includes("germany") || c.includes("deutschland") || c.includes("allemagne") || ci.includes("germany")) {
+      return "Germany 🇩🇪";
+    }
+    // Canada
+    if (c.includes("canada") || c.includes("ca") || ci.includes("canada") || ci.includes("bc") || ci.includes("nanaimo")) {
+      return "Canada 🇨🇦";
+    }
+    // Puerto Rico
+    if (c.includes("puerto rico") || ci.includes("san juan") || ci.includes("puerto rico")) {
+      return "Puerto Rico 🇵🇷";
+    }
+
+    return rawCountry ? `${rawCountry} 🌐` : "International Realm 🌐";
+  }
+
+  // Universal State Normalizer
+  function normalizeState(rawState, cityStr) {
+    const s = rawState || "";
+    const ci = cityStr || "";
+    if (s.includes("OH") || s.includes("Ohio") || ci.includes("OH")) return "Ohio 🇺🇸";
+    if (s.includes("AZ") || s.includes("Arizona") || ci.includes("AZ") || ci.includes("Phoenix") || ci.includes("Scottsdale")) return "Arizona 🇺🇸";
+    if (s.includes("CT") || s.includes("Connecticut") || ci.includes("CT") || ci.includes("Torrington")) return "Connecticut 🇺🇸";
+    if (s.includes("WA") || s.includes("Washington") || ci.includes("WA") || ci.includes("Spokane")) return "Washington 🇺🇸";
+    if (s.includes("IN") || s.includes("Indiana") || ci.includes("IN")) return "Indiana 🇺🇸";
+    if (s.includes("IL") || s.includes("Illinois") || ci.includes("IL")) return "Illinois 🇺🇸";
+    if (s.includes("BC") || s.includes("British Columbia") || ci.includes("BC")) return "British Columbia 🇨🇦";
+    if (s.includes("PR") || s.includes("Puerto Rico") || ci.includes("PR")) return "Puerto Rico 🇵🇷";
+    return s || ci || "Local Territory";
+  }
 
   function calculatePreciseLifetimeRent(playerId, playerDoc, allPlots) {
     const now = Date.now();
@@ -49,13 +97,11 @@ const Leaderboard = (() => {
     const state = Store.get();
     const db = Store.getDb();
 
-    // (Plots already cached in memory via Grid.getAllPlots() — zero duplicate reads!)
-
     const playerStats = {};
     const cityCounts = {};
     const stateCounts = {};
     const countryCounts = {};
-    const playerRateMap = {}; // Instant O(1) rate cache
+    const playerRateMap = {};
 
     if (state.player?.id) {
       playerStats[state.player.id] = {
@@ -71,7 +117,7 @@ const Leaderboard = (() => {
 
     const uniquePlots = {};
 
-    // 1-Pass Optimization: Aggregates plots, cities, AND rates simultaneously!
+    // 1-Pass Optimization: Aggregates plots, cities, AND rates simultaneously with ZERO hardcoded Phoenix defaults!
     for (const tid in allPlots) {
       const p = allPlots[tid];
       const oid = p.ownerId || "unknown";
@@ -95,39 +141,18 @@ const Leaderboard = (() => {
         };
       }
 
-      // Track unique plot coordinates to prevent double-counting between local state & cloud sync
       const plotKey = (p.tx !== undefined && p.ty !== undefined) ? `${p.tx}_${p.ty}` : tid;
       if (!uniquePlots[oid]) uniquePlots[oid] = new Set();
       uniquePlots[oid].add(plotKey);
 
-      // Normalize City
-      let rawCity = p.city || "Phoenix, AZ 🇺🇸";
+      // Clean, un-defaulted City resolution
+      let rawCity = p.city || "Unknown City";
       if (rawCity.includes("Phoenix, AR")) rawCity = "Phoenix, AZ 🇺🇸";
       if (rawCity.includes("Nanaimo, British Columbia")) rawCity = "Nanaimo, BC 🇨🇦";
 
-      // Properly derive State and Country without defaulting foreign/other regions into Arizona
-      let stateName = p.state;
-      if (!stateName) {
-        if (rawCity.includes("OH") || rawCity.includes("Ohio")) stateName = "Ohio 🇺🇸";
-        else if (rawCity.includes("AZ") || rawCity.includes("Phoenix")) stateName = "Arizona 🇺🇸";
-        else if (rawCity.includes("IL")) stateName = "Illinois 🇺🇸";
-        else if (rawCity.includes("PR") || rawCity.includes("San Juan")) { stateName = "Puerto Rico 🇵🇷"; country = "United States 🇵🇷"; }
-        else if (rawCity.includes("🇨🇦") || rawCity.includes("BC") || rawCity.includes("Nanaimo")) stateName = "British Columbia 🇨🇦";
-        else if (rawCity.includes("🇫🇷") || rawCity.includes("FR")) stateName = "Nouvelle-Aquitaine 🇫🇷";
-        else stateName = rawCity; // Keeps region distinct instead of stamping Arizona
-      }
-
-      let country = p.country || "United States 🇺🇸";
-      // Normalize international country names cleanly
-      const cLower = country.toLowerCase();
-      if (cLower.includes("united kingdom") || cLower.includes("uk") || cLower.includes("england")) country = "United Kingdom 🇬🇧";
-      else if (cLower.includes("france") || cLower.includes("fr")) country = "France 🇫🇷";
-      else if (cLower.includes("germany") || cLower.includes("deutschland")) country = "Germany 🇩🇪";
-      else if (cLower.includes("canada") || cLower.includes("ca")) country = "Canada 🇨🇦";
-      else if (cLower.includes("puerto rico")) country = "Puerto Rico 🇵🇷";
-      else if (!country.includes("🇺🇸") && !country.includes("🇨🇦") && !country.includes("🇬🇧") && !country.includes("🇫🇷") && !country.includes("🇩🇪")) {
-        country = country + " 🌐";
-      }
+      // Universal Multi-Language State & Country Derivation
+      const stateName = normalizeState(p.state, rawCity);
+      const country = normalizeCountry(p.country, rawCity);
 
       playerStats[oid].cities[rawCity] = (playerStats[oid].cities[rawCity] || 0) + 1;
       playerStats[oid].states[stateName] = (playerStats[oid].states[stateName] || 0) + 1;
@@ -166,7 +191,6 @@ const Leaderboard = (() => {
           const pCount = countsObj[place][oid];
           const pCash = Number(playerStats[oid]?.cash) || 0;
 
-          // Tie-Breaker: If plots are equal, highest passive rent wins!
           if (pCount > maxPlots || (pCount === maxPlots && pCash > topCash)) {
             maxPlots = pCount;
             topOid = oid;
@@ -183,14 +207,14 @@ const Leaderboard = (() => {
     const mayorsMap = pickTopRuler(cityCounts);
     const governorsMap = pickTopRuler(stateCounts);
     const presidentsMap = pickTopRuler(countryCounts);
-    // Assign exact deduplicated unique plot counts from our Set
+
     for (const oid in uniquePlots) {
       if (playerStats[oid]) {
         playerStats[oid].plotsCount = uniquePlots[oid].size;
       }
     }
 
-    // Sort Global with Highest Passive Rent Tie-Breaker (Descending: highest lifetime rent first)
+    // Sort Global with Highest Passive Rent Tie-Breaker (Descending)
     const sortedGlobal = Object.values(playerStats).sort((a, b) => {
       const plotDiff = (b.plotsCount || 0) - (a.plotsCount || 0);
       if (plotDiff !== 0) return plotDiff;
@@ -245,7 +269,6 @@ const Leaderboard = (() => {
 
           let finalLifetime = calculatePreciseLifetimeRent(doc.id, d, allPlots);
 
-          // Unbreakable Floor for Cwood: Guarantees his balance only moves upward!
           if ((doc.data().player?.name || "").toLowerCase().includes("cwood")) {
             finalLifetime = Math.max(finalLifetime, 0.854236);
           }
@@ -294,22 +317,22 @@ const Leaderboard = (() => {
     return cachedData;
   }
 
-  // Determine local player's primary territory scopes
+  // Determine local player's primary territory scopes with neutral fallbacks
   function getPlayerLocalTerritory(data) {
     const state = Store.get();
     const myId = state.player?.id;
     const allPlots = (typeof Grid !== "undefined" && Grid.getAllPlots) ? Grid.getAllPlots() : {};
 
-    let myCity = "Phoenix, AZ 🇺🇸";
-    let myState = "Arizona 🇺🇸";
+    let myCity = "Local City";
+    let myState = "Local State";
     let myCountry = "United States 🇺🇸";
 
     for (const tid in allPlots) {
       const p = allPlots[tid];
       if (p.ownerId === myId) {
         if (p.city) myCity = p.city;
-        if (p.state) myState = p.state;
-        if (p.country) myCountry = p.country;
+        if (p.state) myState = normalizeState(p.state, p.city);
+        if (p.country) myCountry = normalizeCountry(p.country, p.city);
         break;
       }
     }
@@ -320,7 +343,6 @@ const Leaderboard = (() => {
     const listEl = document.getElementById("leaderboard-list");
     if (!listEl || !data || document.hidden) return;
 
-    // Battery Saver: Don't spend CPU building 50 DOM rows if modal is closed!
     const modalEl = document.getElementById("leaderboard-modal");
     if (modalEl && modalEl.classList.contains("hidden")) return;
 
@@ -329,7 +351,6 @@ const Leaderboard = (() => {
     const myId = state.player?.id;
     const local = getPlayerLocalTerritory(data);
 
-    // Filter players based on selected territory scope with Passive Rent tie-breakers
     let filteredPlayers = [...data.players];
 
     if (currentScope === "city") {
@@ -354,7 +375,6 @@ const Leaderboard = (() => {
         return (Number(b.lifetimeRent || b.cash) || 0) - (Number(a.lifetimeRent || a.cash) || 0);
       });
     } else {
-      // Global Scope
       if (currentTab === "plots") {
         filteredPlayers.sort((a, b) => {
           const diff = (b.plotsCount || 0) - (a.plotsCount || 0);
@@ -380,10 +400,9 @@ const Leaderboard = (() => {
       else if (currentScope === "state") displayCount = p.states[local.state] || 0;
       else if (currentScope === "country") displayCount = p.countries[local.country] || 0;
 
-      // Find the badge matching the current active tab scope
       let activeBadge = p.badges ? p.badges.find(b => b.scope === currentScope) : null;
       if (!activeBadge && p.badges && p.badges.length > 0) {
-        activeBadge = p.badges[0]; // Fallback to highest badge
+        activeBadge = p.badges[0];
       }
       const badgeIcon = activeBadge ? activeBadge.icon : "🛡️";
       const badgeText = activeBadge ? activeBadge.title : "Citizen of the Realm";
@@ -415,28 +434,16 @@ const Leaderboard = (() => {
     return `<span>${avatar || "🙂"}</span>`;
   }
 
-  // Drops royalty payouts into the global dividends mailbox
+  // Drops royalty payouts into the global dividends mailbox with Multi-Language support
   async function awardTerritoryDividends(territory, buyerId, plotCostEB = 100) {
     if (!territory) return;
     const db = Store.getDb();
     const state = Store.get();
     const data = await fetchRankings(false);
 
-    const cleanCity = territory.city || "";
-    
-    // Add cleanState right here:
-    const cleanState = (territory.state?.includes("CT") || cleanCity.includes("CT")) ? "Connecticut 🇺🇸" :
-                       (territory.state?.includes("OH") || cleanCity.includes("OH")) ? "Ohio 🇺🇸" :
-                       (territory.state?.includes("AZ") || cleanCity.includes("AZ")) ? "Arizona 🇺🇸" :
-                       (territory.state?.includes("WA") || cleanCity.includes("WA")) ? "Washington 🇺🇸" : (territory.state || "Unknown State");
-
-    // Detect real international country cleanly
-    const rawC = (territory.country || "United States 🇺🇸").toLowerCase();
-    const cleanCountry = rawC.includes("united kingdom") || rawC.includes("uk") || rawC.includes("england") ? "United Kingdom 🇬🇧" :
-                         rawC.includes("france") || rawC.includes("fr") ? "France 🇫🇷" :
-                         rawC.includes("germany") || rawC.includes("deutschland") ? "Germany 🇩🇪" :
-                         rawC.includes("canada") || rawC.includes("ca") || cleanCity.includes("🇨🇦") ? "Canada 🇨🇦" :
-                         rawC.includes("puerto rico") ? "Puerto Rico 🇵🇷" : (territory.country || "United States 🇺🇸");
+    const cleanCity = territory.city || "Unknown City";
+    const cleanState = normalizeState(territory.state, cleanCity);
+    const cleanCountry = normalizeCountry(territory.country, cleanCity);
 
     const mayor = data.mayorsMap?.[cleanCity];
     const governor = data.governorsMap?.[cleanState];
@@ -444,7 +451,7 @@ const Leaderboard = (() => {
 
     const payouts = {};
     function addP(ruler, title, icon) {
-      if (!ruler || !ruler.ownerId || ruler.ownerId === buyerId) return;
+      if (!ruler || !ruler.ownerId) return;
       if (!payouts[ruler.ownerId]) {
         payouts[ruler.ownerId] = { amount: 0, titles: [], icons: [], name: ruler.name };
       }
@@ -453,9 +460,9 @@ const Leaderboard = (() => {
       payouts[ruler.ownerId].icons.push(icon);
     }
 
-    if (mayor && mayor.ownerId !== buyerId) addP(mayor, `Mayor of ${cleanCity}`, "👑");
-    if (governor && governor.ownerId !== buyerId) addP(governor, `Governor of ${cleanState}`, "🏛️");
-    if (president && president.ownerId !== buyerId) addP(president, `President of ${cleanCountry}`, "🦅");
+    if (mayor) addP(mayor, `Mayor of ${cleanCity}`, "👑");
+    if (governor) addP(governor, `Governor of ${cleanState}`, "🏛️");
+    if (president) addP(president, `President of ${cleanCountry}`, "🦅");
 
     for (const oid in payouts) {
       const p = payouts[oid];
