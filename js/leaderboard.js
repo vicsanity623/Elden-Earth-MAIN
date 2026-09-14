@@ -9,33 +9,45 @@ const Leaderboard = (() => {
   let lastFetchTime = 0;
   const CACHE_TTL_MS = 60000;
 
-  // Universal Multi-Language Country Normalizer (Supports French, German, Spanish, UK, US)
+  // Universal Multi-Language Country Normalizer (Strict whole-word matching)
   function normalizeCountry(rawCountry, cityStr) {
-    const c = (rawCountry || "").toLowerCase();
-    const ci = (cityStr || "").toLowerCase();
+    const c = (rawCountry || "").toLowerCase().trim();
+    const ci = (cityStr || "").toLowerCase().trim();
 
-    // United States (English, French, German, Spanish)
-    if (c.includes("united states") || c.includes("usa") || c.includes("états-unis") || c.includes("etats-unis") || c.includes("estados unidos") || c.includes("vereinigte staaten")) {
+    // 1. South Africa (Checked FIRST so 'Africa' never collides with 'fr'!)
+    if (c.includes("south africa") || c.includes("afrique du sud") || c.includes("südafrika") || ci.includes("🇿🇦") || ci.includes("eastern cape") || ci.includes("kouga")) {
+      return "South Africa 🇿🇦";
+    }
+    // 2. United States
+    if (c.includes("united states") || c.includes("usa") || c.includes("états-unis") || c.includes("etats-unis") || c.includes("estados unidos") || c.includes("vereinigte staaten") || c === "us" || ci.includes("🇺🇸")) {
       return "United States 🇺🇸";
     }
-    // United Kingdom / England (English, French)
-    if (c.includes("united kingdom") || c.includes("uk") || c.includes("england") || c.includes("grande-bretagne") || ci.includes("england") || ci.includes("uk")) {
+    // 3. United Kingdom / Great Britain / England
+    if (c.includes("united kingdom") || c.includes("great britain") || c.includes("england") || c.includes("scotland") || c.includes("wales") || c.includes("grande-bretagne") || c === "uk" || ci.includes("🇬🇧")) {
       return "United Kingdom 🇬🇧";
     }
-    // France
-    if (c.includes("france") || c.includes("fr") || ci.includes("france")) {
+    // 4. France (Strict whole-word match — does NOT match 'Africa'!)
+    if (c.includes("france") || c === "fr" || ci.includes("🇫🇷")) {
       return "France 🇫🇷";
     }
-    // Germany (English, German)
-    if (c.includes("germany") || c.includes("deutschland") || c.includes("allemagne") || ci.includes("germany")) {
+    // 5. Germany
+    if (c.includes("germany") || c.includes("deutschland") || c.includes("allemagne") || c === "de" || ci.includes("🇩🇪")) {
       return "Germany 🇩🇪";
     }
-    // Canada
-    if (c.includes("canada") || c.includes("ca") || ci.includes("canada") || ci.includes("bc") || ci.includes("nanaimo")) {
+    // 6. Canada
+    if (c.includes("canada") || c === "ca" || ci.includes("🇨🇦") || ci.includes("nanaimo") || ci.includes("bc")) {
       return "Canada 🇨🇦";
     }
-    // Puerto Rico
-    if (c.includes("puerto rico") || ci.includes("san juan") || ci.includes("puerto rico")) {
+    // 7. Spain
+    if (c.includes("spain") || c.includes("españa") || c.includes("espagne") || c === "es" || ci.includes("🇪🇸")) {
+      return "Spain 🇪🇸";
+    }
+    // 8. Australia
+    if (c.includes("australia") || c.includes("australie") || c === "au" || ci.includes("🇦🇺")) {
+      return "Australia 🇦🇺";
+    }
+    // 9. Puerto Rico
+    if (c.includes("puerto rico") || c === "pr" || ci.includes("🇵🇷") || ci.includes("san juan")) {
       return "Puerto Rico 🇵🇷";
     }
 
