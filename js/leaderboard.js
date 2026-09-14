@@ -34,6 +34,11 @@ const Leaderboard = (() => {
     return Math.max(totalRent, Number(playerDoc.lifetimeRent || playerDoc.cash || 0));
   }
 
+  function invalidateCache() {
+    cachedData = null;
+    lastFetchTime = 0;
+  }
+
   async function fetchRankings(forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && cachedData && (now - lastFetchTime < CACHE_TTL_MS)) {
@@ -412,22 +417,33 @@ const Leaderboard = (() => {
     const state = Store.get();
     const data = await fetchRankings(false);
 
-    const mayor = data.mayorsMap?.[territory.city];
-    const governor = data.governorsMap?.[territory.state];
-    const president = data.presidentsMap?.[territory.country];
+    const cleanCity = territory.city || "";
+    const cleanState = (territory.state?.includes("CT") || cleanCity.includes("CT")) ? "Connecticut 🇺🇸" :
+                       (territory.state?.includes("OH") || cleanCity.includes("OH")) ? "Ohio 🇺🇸" :
+                       (territory.state?.includes("AZ") || cleanCity.includes("AZ")) ? "Arizona 🇺🇸" :
+                       (territory.state?.includes("WA") || cleanCity.includes("WA")) ? "Washington 🇺🇸" : territory.state;
+    const cleanCountry = (territory.country?.toLowerCase().includes("canada") || cleanCity.includes("🇨🇦")) ? "Canada 🇨🇦" : "United States 🇺🇸";
+
+    const mayor = data.mayorsMap?.[cleanCity];
+    const governor = data.governorsMap?.[cleanState];
+    const president = data.presidentsMap?.[cleanCountry];
 
     const payouts = {};
     function addP(ruler, title, icon) {
       if (!ruler || !ruler.ownerId) return;
-      if (!payouts[ruler.ownerId]) payouts[ruler.ownerId] = { amount: 0, titles: [], icons: [], name: ruler.name };
-      payouts[ruler.ownerId].amount += 2;
+      
+      if (!payouts[ruler.ownerId]) {
+        payouts[ruler.ownerId] = { amount: 0, titles: [], icons: [], name: ruler.name };
+      }
+      payouts[ruler.ownerId].amount += 2; // +2 EB per title held!
       payouts[ruler.ownerId].titles.push(title);
       payouts[ruler.ownerId].icons.push(icon);
     }
 
-    if (mayor) addP(mayor, `Mayor of ${territory.city}`, "👑");
-    if (governor) addP(governor, `Governor of ${territory.state}`, "🏛️");
-    if (president) addP(president, `President of ${territory.country}`, "🦅");
+    // Stackable Triple Crown: Mayor (+2) + Governor (+2) + President (+2) = +6 EB!
+    if (mayor) addP(mayor, `Mayor of ${cleanCity}`, "👑");
+    if (governor) addP(governor, `Governor of ${cleanState}`, "🏛️");
+    if (president) addP(president, `President of ${cleanCountry}`, "🦅");
 
     for (const oid in payouts) {
       const p = payouts[oid];
@@ -464,42 +480,55 @@ const Leaderboard = (() => {
     }
   }
 
-  // Automatically collects all royalties deposited into your mailbox while offline!
-  async function claimPendingDividends() {
+  // Live Real-Time Royalties Listener (Instantly credits EB the second land is bought!)
+  let dividendUnsubscribe = null;
+
+  function initDividendMailbox() {
     const state = Store.get();
     const db = Store.getDb();
     const myId = state?.player?.id;
     if (!db || !myId) return;
 
+    if (dividendUnsubscribe) {
+      dividendUnsubscribe();
+      dividendUnsubscribe = null;
+    }
+
     try {
-      const snap = await db.collection("dividends")
+      // Listens via real-time WebSocket for any incoming royalties!
+      dividendUnsubscribe = db.collection("dividends")
         .where("recipientId", "==", myId)
         .where("claimed", "==", false)
-        .get();
+        .onSnapshot(async (snapshot) => {
+          if (!snapshot || snapshot.empty) return;
 
-      if (snap.empty) return;
+          let totalEarned = 0;
+          const batch = db.batch();
 
-      let totalEarned = 0;
-      const batch = db.batch();
+          snapshot.forEach((doc) => {
+            const d = doc.data();
+            totalEarned += (Number(d.amount) || 2);
+            batch.update(doc.ref, { claimed: true });
+          });
 
-      snap.forEach(doc => {
-        const d = doc.data();
-        totalEarned += (Number(d.amount) || 2);
-        batch.update(doc.ref, { claimed: true });
-      });
+          if (totalEarned > 0) {
+            const s = Store.get();
+            s.eb = (Number(s.eb) || 0) + totalEarned;
+            s.totalDividends = (Number(s.totalDividends) || 0) + totalEarned;
+            Store.save(true); // Persist immediately to Google Cloud!
 
-      if (totalEarned > 0) {
-        state.eb = (Number(state.eb) || 0) + totalEarned;
-        state.totalDividends = (Number(state.totalDividends) || 0) + totalEarned;
-        Store.save(true); // Persist immediately to Google Cloud!
+            // Update top bar currency immediately in real time!
+            const ebStat = document.getElementById("stat-eb");
+            if (ebStat) ebStat.textContent = `${s.eb} EB`;
 
-        await batch.commit();
+            await batch.commit();
 
-        const toastFn = window.showToast || alert;
-        toastFn(`👑 Royal Payout! You collected +${totalEarned} EB in territory royalties while away!`, 5000);
-      }
+            const toastFn = window.showToast || alert;
+            toastFn(`👑 Real-Time Royalty! +${totalEarned} EB received from land claim!`, 5000);
+          }
+        }, (err) => console.warn("[Dividends] Listener notice:", err));
     } catch (e) {
-      console.warn("[Dividends] Auto-claim notice:", e);
+      console.warn("[Dividends] Init notice:", e);
     }
   }
 
@@ -514,6 +543,7 @@ const Leaderboard = (() => {
   function init() {
     modal = document.getElementById("leaderboard-modal");
     document.getElementById("leaderboard-btn")?.addEventListener("click", open);
+    initDividendMailbox(); // Starts the real-time live royalty listener on game start!
 
     // Scope Buttons (Global, Country, State, City)
     const scopeBtns = document.querySelectorAll(".lb-scope-btn");
@@ -550,5 +580,5 @@ const Leaderboard = (() => {
     };
   }
 
-  return { init, open, render, fetchRankings, awardTerritoryDividends, claimPendingDividends, getLocalTerritoryRulers };
+  return { init, open, render, fetchRankings, invalidateCache, awardTerritoryDividends, initDividendMailbox, getLocalTerritoryRulers };
 })();
