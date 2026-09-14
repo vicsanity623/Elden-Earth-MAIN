@@ -42,23 +42,40 @@ const WeeklyPool = (() => {
 
     // Fast Rarity Rate Lookup Table
     // Calculate global lifetime rent AND global velocity
+    // --- 14-Day (2-Week) Fiscal Period Reset Engine ---
+    const now = Date.now();
+    const TWO_WEEKS_MS = 14 * 24 * 3600 * 1000; // 14-Day Period
+    const PERIOD_ANCHOR_MS = 1788912000000;      // Aligned with Monday 00:00 UTC cycle
+
+    let periodElapsed = (now - PERIOD_ANCHOR_MS) % TWO_WEEKS_MS;
+    if (periodElapsed < 0) periodElapsed += TWO_WEEKS_MS;
+    const periodStartTime = now - periodElapsed; // Exact start of current 14-day window!
+
+    // Calculate rent generated ONLY during this active 14-day fiscal period
     players.forEach(p => {
-      totalGlobalRent += (Number(p.lifetimeRent || p.cash) || 0);
-      
-      // Calculate this player's base rate by their plot rarities
       if (p.plots) {
         for (const tid in p.plots) {
-          const rKey = p.plots[tid].rarity?.key || p.plots[tid].rarity || "common";
-          const rarity = CONFIG.PLOT_RARITIES.find(r => r.key === rKey);
-          globalRateSec += (rarity ? rarity.rate : CONFIG.PLOT_RARITIES[0].rate);
+          const plot = p.plots[tid];
+          const rKey = plot.rarity?.key || plot.rarity || "common";
+          const rate = RATE_MAP[rKey] || 0.0000000011;
+
+          // Rent is only counted from when the 14-day period began!
+          const plotClaimedTime = Number(plot.claimedAt) || periodStartTime;
+          const activeSince = Math.max(plotClaimedTime, periodStartTime);
+          const periodAgeSec = Math.max(0, (now - activeSince) / 1000);
+
+          totalGlobalRent += (periodAgeSec * rate);
+          globalRateSec += rate;
         }
       } else if (p.plotsCount) {
-        // Fallback if plots map isn't fully loaded: assume all common
-        globalRateSec += (p.plotsCount * CONFIG.PLOT_RARITIES[0].rate);
+        const fallbackRate = p.plotsCount * 0.0000000011;
+        const periodSec = Math.max(0, (now - periodStartTime) / 1000);
+        totalGlobalRent += (periodSec * fallbackRate);
+        globalRateSec += fallbackRate;
       }
     });
 
-    const weeklyPool = totalGlobalRent * 0.01; // Exactly 1%
+    const weeklyPool = totalGlobalRent * 0.01; // 1% of this period's rent!
 
     // Top 10 sorted by plots + lifetimeRent
     const sortedTop10 = [...players].sort((a, b) => {
