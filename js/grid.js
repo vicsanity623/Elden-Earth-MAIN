@@ -58,8 +58,12 @@ const Grid = (() => {
         return;
       }
     }
-    if (state.player && state.player.id && state.player.id.startsWith("guest-")) {
-      showToast("YOU ARE A GUEST IN THIS REALM. Sign in with Google to buy plots.");
+    // Strict Guest Guard: Only permanent Google accounts may claim realm land!
+    const fbUser = (typeof firebase !== "undefined" && firebase.auth) ? firebase.auth().currentUser : null;
+    const isGuest = fbUser ? fbUser.isAnonymous : (!state.player?.id || state.player.id.startsWith("guest-"));
+    if (isGuest) {
+      const toastFn = window.showToast || alert;
+      toastFn("🛡️ YOU ARE A GUEST. Sign in with Google to claim permanent land plots!", 3500);
       onBuyAttempt(false, null);
       return;
     }
@@ -215,12 +219,22 @@ const Grid = (() => {
 
   async function executeBuy() {
     if (!pendingTile) return;
+    if (typeof Store !== "undefined" && Store.isSessionActive && !Store.isSessionActive()) {
+      const toast = window.showToast || alert;
+      toast("⛔ Account active on another tab! Please refresh.", 3500);
+      return;
+    }
     const { tx, ty } = pendingTile;
     pendingTile = null;
 
     const state = Store.get();
-    if (state.player.id && state.player.id.startsWith("guest-")) {
-      showToast("YOU ARE A GUEST IN THIS REALM. Sign in with Google to buy plots.");
+
+    // 1. Strict Guest Guard: Catches Firebase Anonymous Guests too!
+    const fbUser = (typeof firebase !== "undefined" && firebase.auth) ? firebase.auth().currentUser : null;
+    const isGuest = fbUser ? fbUser.isAnonymous : (!state.player?.id || state.player.id.startsWith("guest-"));
+    if (isGuest) {
+      const toastFn = window.showToast || alert;
+      toastFn("🛡️ YOU ARE A GUEST. Sign in with Google to claim permanent land!", 3500);
       onBuyAttempt(false, null);
       return;
     }
@@ -230,7 +244,30 @@ const Grid = (() => {
 
     const tid = tileId(tx, ty);
     const allPlots = getAllPlots();
-    if (allPlots[tid] || state.eb < CONFIG.PLOT_COST_EB) return;
+    if (allPlots[tid]) return;
+
+    // 2. 🛡️ MULTI-TAB EXPLOIT KILLER: Verify live Google Cloud balance before purchase!
+    const db = Store.getDb();
+    if (db && state.player?.id) {
+      try {
+        const freshSave = await db.collection("saves").doc(state.player.id).get();
+        if (freshSave.exists) {
+          const cloudEB = Number(freshSave.data()?.eb) || 0;
+          if (cloudEB < CONFIG.PLOT_COST_EB) {
+            state.eb = cloudEB;
+            Store.save();
+            if (typeof updateTopbar === "function") updateTopbar();
+            const toastFn = window.showToast || alert;
+            toastFn("⚠️ Insufficient Elden Bucks! (Syncing balance from cloud)", 3500);
+            return; // ⛔ ABORT! Another tab already spent this EB!
+          }
+        }
+      } catch (err) {
+        console.warn("[AntiCheat] Live balance check notice:", err);
+      }
+    }
+
+    if (state.eb < CONFIG.PLOT_COST_EB) return;
 
     // ⏳ 60-Second Cooldown & EB deduction
     const now = Date.now();
@@ -245,11 +282,7 @@ const Grid = (() => {
     const territory = await Geo.getTerritoryInfo(centerLat, centerLon);
 
     if (map) {
-      const corners = Geo.tileBounds(tx, ty, CONFIG.TILE_SIZE_METERS);
-      const centerLat = (corners[0][0] + corners[2][0]) / 2;
-      const centerLon = (corners[0][1] + corners[2][1]) / 2;
       const pt = map.project([centerLon, centerLat]);
-
       const popup = document.createElement("div");
       popup.className = "combat-text-popup";
       popup.style.left = `${pt.x}px`;
@@ -279,6 +312,11 @@ const Grid = (() => {
     onBuyAttempt(true, rarity);
     render();
 
+    // Invalidate leaderboard cache so player immediately gets crowned Mayor/Governor/President!
+    if (typeof Leaderboard !== "undefined" && Leaderboard.invalidateCache) {
+      Leaderboard.invalidateCache();
+    }
+
     // 1. Trigger Multi-Tier Stackable Dividends (Mayor, Governor, President)
     if (typeof Leaderboard !== "undefined" && Leaderboard.awardTerritoryDividends) {
       Leaderboard.awardTerritoryDividends(territory, state.player.id, CONFIG.PLOT_COST_EB);
@@ -290,7 +328,6 @@ const Grid = (() => {
     }
 
     // 3. Save to Firebase Firestore
-    const db = Store.getDb();
     if (db) {
       try {
         await db.collection("plots").doc(tid).set(plotData);
