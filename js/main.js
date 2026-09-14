@@ -21,7 +21,11 @@
   }
 
   function openModal(id) { el(id).classList.remove("hidden"); }
-  function closeModal(id) { el(id).classList.add("hidden"); }
+  function closeModal(id) {
+    if (id === "session-conflict-modal") return; // ⛔ NEVER allow closing the conflict screen!
+    const m = el(id);
+    if (m) m.classList.add("hidden");
+  }
 
   let cachedCashWhole = null;
   let cachedCashDecimal = null;
@@ -33,6 +37,7 @@
   let lastRateVal = "";
 
   function updateTopbar() {
+    window.updateTopbar = updateTopbar;
     if (document.hidden) return; // Battery Saver: Skip UI work when phone is in pocket!
     const state = Store.get();
     if (state.cash === undefined) state.cash = 0;
@@ -306,7 +311,7 @@
     if (mayorStatusEl) {
       mayorStatusEl.textContent = "Checking realm...";
       if (typeof Leaderboard !== "undefined" && Leaderboard.fetchRankings) {
-        Leaderboard.fetchRankings().then((data) => {
+        Leaderboard.fetchRankings(true).then((data) => { // ⚡ Always force fresh titles when opening profile!
           const targetPlayerStat = (data.players || []).find(p => p.id === targetOwnerId);
           const titlesList = [];
 
@@ -1722,10 +1727,12 @@
       openModal("menu-modal");
     });
 
-    // Wire Resume Session Button (Single Active Session Lock)
+    // Wire up Session Conflict Resume Button
     document.getElementById("resume-session-btn")?.addEventListener("click", () => {
       if (typeof Store !== "undefined" && Store.resumeSession) {
         Store.resumeSession();
+      } else {
+        window.location.reload();
       }
     });
     
