@@ -4,7 +4,8 @@
 // ============================================================
 (() => {
   let map, watchId;
-  let currentPos = null;
+  const _savedStore = (typeof Store !== "undefined" && Store.get) ? Store.get() : null;
+  let currentPos = _savedStore?.lastDiamondPlayerPosition || null;
   let toastTimer = null;
   let pulseAnimId = null;
   let isOrbiting = false;
@@ -1932,6 +1933,46 @@
       }
     }, { passive: true });
   }
+
+  // --- Universal 50X Screen Shake Controller ---
+    function setShakePreference(disabled) {
+      const state = Store.get();
+      if (!state) return;
+      state.disableShake = disabled;
+      document.body.classList.toggle("no-shake", disabled);
+      
+      // Synchronize all checkboxes across modals
+      document.querySelectorAll("#toggle-shake-fx, .toggle-switch-input").forEach((box) => {
+        box.checked = !disabled;
+      });
+
+      Store.save();
+      const toastFn = window.showToast || alert;
+      toastFn(disabled ? "🛡️ 50X Screen Shake disabled (Calm Mode)" : "🔥 50X Screen Shake enabled!", 2500);
+    }
+
+    // Restore on boot
+    const initialDisabled = Boolean(Store.get()?.disableShake);
+    document.body.classList.toggle("no-shake", initialDisabled);
+    document.querySelectorAll("#toggle-shake-fx, .toggle-switch-input").forEach((box) => {
+      box.checked = !initialDisabled;
+    });
+
+    // Delegated click listener (Guaranteed to catch clicks in Weekly Pool modal!)
+    document.addEventListener("change", (e) => {
+      if (e.target && (e.target.id === "toggle-shake-fx" || e.target.classList.contains("toggle-switch-input"))) {
+        setShakePreference(!e.target.checked);
+      }
+    });
+
+    // Wire up Session Conflict Resume Button
+    document.getElementById("resume-session-btn")?.addEventListener("click", () => {
+      if (typeof Store !== "undefined" && Store.resumeSession) {
+        Store.resumeSession();
+      } else {
+        window.location.reload();
+      }
+    });
 
   // ---------------- Boot ----------------
   document.addEventListener("DOMContentLoaded", () => {
