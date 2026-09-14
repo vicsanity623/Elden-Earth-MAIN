@@ -5,6 +5,14 @@ const Store = (() => {
   const KEY = "eldenEarth.save.v1";
   let db = null;
 
+  // Smart Session Lock: Persists across page reloads, but changes across different tabs/devices!
+  let localSessionId = (typeof sessionStorage !== "undefined") ? sessionStorage.getItem("elden_sess_token") : null;
+  if (!localSessionId) {
+    localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    try { sessionStorage.setItem("elden_sess_token", localSessionId); } catch (e) {}
+  }
+  let isSessionPaused = false;
+
   function getDb() {
     if (db) return db;
     try {
@@ -148,10 +156,12 @@ const Store = (() => {
 
   // Cloud Save to Firestore (Guaranteed Sync)
   function syncToCloud() {
+    if (isSessionPaused) return; // Never save if another device has taken over!
     const firestore = getDb();
     if (!firestore || !state || !state.player || !state.player.id) return;
 
     try {
+      state.activeSessionId = localSessionId;
       firestore.collection("saves").doc(state.player.id).set(state)
         .catch(err => console.warn("[Cloud] Sync failed:", err));
     } catch (err) {
@@ -258,7 +268,25 @@ const Store = (() => {
       }
 
       localStorage.setItem(KEY, JSON.stringify(state));
-      syncToCloud();
+
+      // 1. Claim Active Session on Google Cloud (sessionStorage ensures refresh doesn't kick you!)
+      state.activeSessionId = localSessionId;
+      isSessionPaused = false;
+      await firestore.collection("saves").doc(playerId).set({
+        activeSessionId: localSessionId
+      }, { merge: true });
+
+      // 2. Real-Time Multi-Device Listener: Detects if another device/tab opens this account!
+      firestore.collection("saves").doc(playerId).onSnapshot((snap) => {
+        if (!snap.exists) return;
+        const d = snap.data();
+        if (d.activeSessionId && d.activeSessionId !== localSessionId) {
+          isSessionPaused = true;
+          console.warn("[Auth] Account active on another device/tab! Pausing this session.");
+          const conflictModal = document.getElementById("session-conflict-modal");
+          if (conflictModal) conflictModal.classList.remove("hidden");
+        }
+      });
 
       console.log(`[Cloud] Restored account for ${playerId} with ${Object.keys(state.plots || {}).length} plots.`);
       return state;
@@ -341,5 +369,28 @@ const Store = (() => {
     return earned;
   }
 
-  return { load, save, get, reset, totalRate, applyOfflineProgress, syncFromCloud, getDb };
+  function isSessionActive() {
+    return !isSessionPaused;
+  }
+
+  function resumeSession() {
+    isSessionPaused = false;
+    document.getElementById("session-conflict-modal")?.classList.add("hidden");
+    if (typeof sessionStorage !== "undefined") {
+      localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      try { sessionStorage.setItem("elden_sess_token", localSessionId); } catch (e) {}
+    }
+    const firestore = getDb();
+    if (firestore && state?.player?.id) {
+      firestore.collection("saves").doc(state.player.id).set({
+        activeSessionId: localSessionId
+      }, { merge: true }).then(() => {
+        window.location.reload();
+      });
+    } else {
+      window.location.reload();
+    }
+  }
+
+  return { load, save, get, reset, totalRate, applyOfflineProgress, syncFromCloud, getDb, isSessionActive, resumeSession };
 })();
