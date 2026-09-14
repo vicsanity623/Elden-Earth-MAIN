@@ -571,18 +571,40 @@ const Grid = (() => {
         let totalLon = 0;
 
         for (const p of cluster) {
-          const px = parseInt(p.tx, 10);
-          const py = parseInt(p.ty, 10);
-          const centerMerc = Geo.fromMercator(
-            px * CONFIG.TILE_SIZE_METERS + CONFIG.TILE_SIZE_METERS / 2,
-            py * CONFIG.TILE_SIZE_METERS + CONFIG.TILE_SIZE_METERS / 2
-          );
-          totalLat += centerMerc.lat;
-          totalLon += centerMerc.lon;
+          let px = parseInt(p.tx, 10);
+          let py = parseInt(p.ty, 10);
+
+          // Auto-recover tx/ty from plot ID if missing in Firestore!
+          if (isNaN(px) || isNaN(py)) {
+            const tidStr = p.id || startTid || "";
+            const parts = tidStr.split("_");
+            if (parts.length === 2) {
+              px = parseInt(parts[0], 10);
+              py = parseInt(parts[1], 10);
+              p.tx = px;
+              p.ty = py;
+            }
+          }
+
+          if (!isNaN(px) && !isNaN(py)) {
+            const centerMerc = Geo.fromMercator(
+              px * CONFIG.TILE_SIZE_METERS + CONFIG.TILE_SIZE_METERS / 2,
+              py * CONFIG.TILE_SIZE_METERS + CONFIG.TILE_SIZE_METERS / 2
+            );
+            totalLat += centerMerc.lat;
+            totalLon += centerMerc.lon;
+          }
         }
+
+        if (cluster.length === 0) continue;
 
         const centroidLat = totalLat / cluster.length;
         const centroidLon = totalLon / cluster.length;
+
+        // 🛡️ NaN SANITY GUARD: Never pass invalid NaN coordinates to MapLibre!
+        if (isNaN(centroidLat) || isNaN(centroidLon) || !isFinite(centroidLat) || !isFinite(centroidLon)) {
+          continue; // Skip invalid marker safely without crashing!
+        }
 
         // 5KM HORIZON CULLING: Don't render signboards for plots in Ohio, Canada, or Indiana!
         const refLat = (playerCoords && playerCoords.lat) ? playerCoords.lat : (map ? map.getCenter().lat : null);
