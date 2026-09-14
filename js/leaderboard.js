@@ -34,6 +34,11 @@ const Leaderboard = (() => {
     return Math.max(totalRent, Number(playerDoc.lifetimeRent || playerDoc.cash || 0));
   }
 
+  function invalidateCache() {
+    cachedData = null;
+    lastFetchTime = 0;
+  }
+
   async function fetchRankings(forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && cachedData && (now - lastFetchTime < CACHE_TTL_MS)) {
@@ -412,22 +417,33 @@ const Leaderboard = (() => {
     const state = Store.get();
     const data = await fetchRankings(false);
 
-    const mayor = data.mayorsMap?.[territory.city];
-    const governor = data.governorsMap?.[territory.state];
-    const president = data.presidentsMap?.[territory.country];
+    const cleanCity = territory.city || "";
+    const cleanState = (territory.state?.includes("CT") || cleanCity.includes("CT")) ? "Connecticut 🇺🇸" :
+                       (territory.state?.includes("OH") || cleanCity.includes("OH")) ? "Ohio 🇺🇸" :
+                       (territory.state?.includes("AZ") || cleanCity.includes("AZ")) ? "Arizona 🇺🇸" :
+                       (territory.state?.includes("WA") || cleanCity.includes("WA")) ? "Washington 🇺🇸" : territory.state;
+    const cleanCountry = (territory.country?.toLowerCase().includes("canada") || cleanCity.includes("🇨🇦")) ? "Canada 🇨🇦" : "United States 🇺🇸";
+
+    const mayor = data.mayorsMap?.[cleanCity];
+    const governor = data.governorsMap?.[cleanState];
+    const president = data.presidentsMap?.[cleanCountry];
 
     const payouts = {};
     function addP(ruler, title, icon) {
       if (!ruler || !ruler.ownerId) return;
-      if (!payouts[ruler.ownerId]) payouts[ruler.ownerId] = { amount: 0, titles: [], icons: [], name: ruler.name };
-      payouts[ruler.ownerId].amount += 2;
+      
+      if (!payouts[ruler.ownerId]) {
+        payouts[ruler.ownerId] = { amount: 0, titles: [], icons: [], name: ruler.name };
+      }
+      payouts[ruler.ownerId].amount += 2; // +2 EB per title held!
       payouts[ruler.ownerId].titles.push(title);
       payouts[ruler.ownerId].icons.push(icon);
     }
 
-    if (mayor) addP(mayor, `Mayor of ${territory.city}`, "👑");
-    if (governor) addP(governor, `Governor of ${territory.state}`, "🏛️");
-    if (president) addP(president, `President of ${territory.country}`, "🦅");
+    // Stackable Triple Crown: Mayor (+2) + Governor (+2) + President (+2) = +6 EB!
+    if (mayor) addP(mayor, `Mayor of ${cleanCity}`, "👑");
+    if (governor) addP(governor, `Governor of ${cleanState}`, "🏛️");
+    if (president) addP(president, `President of ${cleanCountry}`, "🦅");
 
     for (const oid in payouts) {
       const p = payouts[oid];
@@ -564,5 +580,5 @@ const Leaderboard = (() => {
     };
   }
 
-  return { init, open, render, fetchRankings, awardTerritoryDividends, initDividendMailbox, getLocalTerritoryRulers };
+  return { init, open, render, fetchRankings, invalidateCache, awardTerritoryDividends, initDividendMailbox, getLocalTerritoryRulers };
 })();
