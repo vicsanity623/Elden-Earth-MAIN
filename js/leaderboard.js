@@ -9,7 +9,17 @@ const Leaderboard = (() => {
   let lastFetchTime = 0;
   const CACHE_TTL_MS = 60000;
 
-  // Universal Multi-Language Country Normalizer (Strict whole-word matching)
+  // Universal Flag Calculator: Converts any ISO country code ("JP", "FR", "US", "BR") into its Flag Emoji!
+  function getFlagEmoji(countryCode) {
+    if (!countryCode || countryCode.length !== 2) return "🌐";
+    const codePoints = countryCode
+      .toUpperCase()
+      .split("")
+      .map(char => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  }
+
+  // Universal Multi-Language Country Normalizer (Supports all 195+ Countries automatically in English!)
   function normalizeCountry(rawCountry, cityStr) {
     const c = (rawCountry || "").toLowerCase().trim();
     const ci = (cityStr || "").toLowerCase().trim();
@@ -18,7 +28,7 @@ const Leaderboard = (() => {
     if (c.includes("south africa") || c.includes("afrique du sud") || c.includes("südafrika") || ci.includes("🇿🇦") || ci.includes("eastern cape") || ci.includes("kouga")) {
       return "South Africa 🇿🇦";
     }
-    // 2. United States
+    // 2. United States (All multi-language translations)
     if (c.includes("united states") || c.includes("usa") || c.includes("états-unis") || c.includes("etats-unis") || c.includes("estados unidos") || c.includes("vereinigte staaten") || c === "us" || ci.includes("🇺🇸")) {
       return "United States 🇺🇸";
     }
@@ -26,7 +36,7 @@ const Leaderboard = (() => {
     if (c.includes("united kingdom") || c.includes("great britain") || c.includes("england") || c.includes("scotland") || c.includes("wales") || c.includes("grande-bretagne") || c === "uk" || ci.includes("🇬🇧")) {
       return "United Kingdom 🇬🇧";
     }
-    // 4. France (Strict whole-word match — does NOT match 'Africa'!)
+    // 4. France
     if (c.includes("france") || c === "fr" || ci.includes("🇫🇷")) {
       return "France 🇫🇷";
     }
@@ -49,6 +59,14 @@ const Leaderboard = (() => {
     // 9. Puerto Rico
     if (c.includes("puerto rico") || c === "pr" || ci.includes("🇵🇷") || ci.includes("san juan")) {
       return "Puerto Rico 🇵🇷";
+    }
+
+    // 10. Automatic 249-Country Fallback using Unicode Flag Math & Intl English
+    if (rawCountry && rawCountry.length === 2) {
+      try {
+        const enName = new Intl.DisplayNames(["en"], { type: "region" }).of(rawCountry.toUpperCase());
+        return `${enName} ${getFlagEmoji(rawCountry)}`;
+      } catch (e) {}
     }
 
     return rawCountry ? `${rawCountry} 🌐` : "International Realm 🌐";
