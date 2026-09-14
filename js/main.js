@@ -1114,44 +1114,80 @@
       openModal("wardrobe-modal");
     });
 
-    // Rename Player on Name Pencil Tap
+    // Rename Player on Name Pencil Tap (With Unique Name Registry & "Vic" Lock)
     el("edit-name-btn")?.addEventListener("click", async () => {
       const state = Store.get();
+      const db = Store.getDb();
       const currentName = state?.player?.name || "Traveler";
-      const newName = prompt("Choose your realm name (2–16 characters):", currentName);
+      const myId = state?.player?.id;
 
+      const newName = prompt("Choose your unique realm name (2–16 characters):", currentName);
       if (!newName) return;
       const cleanName = newName.trim().slice(0, 16);
       if (cleanName.length < 2 || cleanName === currentName) return;
 
-      // 1. Update local state & HUD
+      const lowerName = cleanName.toLowerCase();
+
+      // 1. 🛡️ RESERVED DEVELOPER & SYSTEM NAMES
+      const reservedSystemNames = ["vic", "admin", "developer", "system", "moderator", "official"];
+      if (reservedSystemNames.includes(lowerName)) {
+        alert(`⛔ The handle "${cleanName}" is a reserved developer handle and cannot be claimed.`);
+        return;
+      }
+
+      // 2. 🌐 GLOBAL UNIQUE NAME CHECK IN FIRESTORE (First-Come, First-Served)
+      if (db && myId) {
+        try {
+          const nameDoc = await db.collection("usernames").doc(lowerName).get();
+          if (nameDoc.exists) {
+            const existingOwner = nameDoc.data().uid;
+            if (existingOwner && existingOwner !== myId) {
+              alert(`⚠️ The name "${cleanName}" is already taken by another player. Please pick a unique name!`);
+              return;
+            }
+          }
+
+          // Register this unique name in Firestore
+          await db.collection("usernames").doc(lowerName).set({
+            uid: myId,
+            name: cleanName,
+            updatedAt: Date.now()
+          });
+
+          // Release old name from registry if changing names
+          if (currentName && currentName !== "Traveler" && currentName.toLowerCase() !== lowerName) {
+            db.collection("usernames").doc(currentName.toLowerCase()).delete().catch(() => {});
+          }
+        } catch (err) {
+          console.warn("[Registry] Username check notice:", err);
+        }
+      }
+
+      // 3. Update local state & HUD
       state.player.name = cleanName;
-      Store.save();
+      Store.save(true);
       updateTopbar();
       updatePlayerInfoModal();
       showToast(`Name updated to "${cleanName}"!`);
 
-      // 2. Broadcast name change to all owned plots in Firestore so other players see it
-      const db = Store.getDb();
-      if (db && state.player.id) {
+      // 4. Broadcast name change to all owned plots in Firestore so other players see it
+      if (db && myId && state.plots) {
         try {
           const batch = db.batch();
-          const snap = await db.collection("plots").where("ownerId", "==", state.player.id).get();
+          const snap = await db.collection("plots").where("ownerId", "==", myId).get();
           snap.forEach((doc) => {
             batch.update(doc.ref, { ownerName: cleanName });
           });
           await batch.commit();
 
-          // Also update Grid memory locally
           if (typeof Grid !== "undefined" && Grid.render) {
             for (const tid in state.plots) {
-              if (state.plots[tid].ownerId === state.player.id) {
+              if (state.plots[tid].ownerId === myId) {
                 state.plots[tid].ownerName = cleanName;
               }
             }
             Grid.render();
           }
-          console.log(`[Multiplayer] Successfully updated ownerName on ${snap.size} plots to "${cleanName}".`);
         } catch (err) {
           console.warn("[Multiplayer] Error updating name across plots:", err);
         }
