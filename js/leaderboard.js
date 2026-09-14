@@ -423,11 +423,20 @@ const Leaderboard = (() => {
     const data = await fetchRankings(false);
 
     const cleanCity = territory.city || "";
+    
+    // Add cleanState right here:
     const cleanState = (territory.state?.includes("CT") || cleanCity.includes("CT")) ? "Connecticut 🇺🇸" :
                        (territory.state?.includes("OH") || cleanCity.includes("OH")) ? "Ohio 🇺🇸" :
                        (territory.state?.includes("AZ") || cleanCity.includes("AZ")) ? "Arizona 🇺🇸" :
-                       (territory.state?.includes("WA") || cleanCity.includes("WA")) ? "Washington 🇺🇸" : territory.state;
-    const cleanCountry = (territory.country?.toLowerCase().includes("canada") || cleanCity.includes("🇨🇦")) ? "Canada 🇨🇦" : "United States 🇺🇸";
+                       (territory.state?.includes("WA") || cleanCity.includes("WA")) ? "Washington 🇺🇸" : (territory.state || "Unknown State");
+
+    // Detect real international country cleanly
+    const rawC = (territory.country || "United States 🇺🇸").toLowerCase();
+    const cleanCountry = rawC.includes("united kingdom") || rawC.includes("uk") || rawC.includes("england") ? "United Kingdom 🇬🇧" :
+                         rawC.includes("france") || rawC.includes("fr") ? "France 🇫🇷" :
+                         rawC.includes("germany") || rawC.includes("deutschland") ? "Germany 🇩🇪" :
+                         rawC.includes("canada") || rawC.includes("ca") || cleanCity.includes("🇨🇦") ? "Canada 🇨🇦" :
+                         rawC.includes("puerto rico") ? "Puerto Rico 🇵🇷" : (territory.country || "United States 🇺🇸");
 
     const mayor = data.mayorsMap?.[cleanCity];
     const governor = data.governorsMap?.[cleanState];
