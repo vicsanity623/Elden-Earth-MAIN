@@ -1,5 +1,5 @@
 {
-  "name": "EldenEarth 2026",
+  "name": "Elden Earth",
   "short_name": "EldenEarth",
   "start_url": "./index.html",
   "display": "standalone",
@@ -17,5 +17,11 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "description": "Walk the real world, claim tiles, earn passive rent, and become ruler of your territory in this geo-location idle game.",
+  "id": "eldenearth",
+  "categories": [
+    "entertainment",
+    "games"
   ]
 }
