@@ -108,15 +108,19 @@ Built with **pure static HTML5 / CSS3 / Vanilla JS** — zero build step, no bac
   * Open market for trading tiles with friends, **Lucky RNG** re-roll rarity stats like Legendary+++, for example pokemon go trades.
 * [ ] **17. 🛡️ Realm Guilds & Joint Kingdoms:**
   * Form alliances to connect plots into massive shared kingdoms with a communal Diamond Vault.
-* [ ] **18. 🎟️ Referral / Friend System:**
-  * Share your code; when a friend claims their 5th plot, both of you get **+50 EB free**. Implement a PokeGo-Lucky Friend type mechanics, ie becoming friends with unknown players & building stats in some way. **Boost Passive Rates** or Unlock **Prestige Plot Upgrades** together.
+* [x] **18. 🎟️ Referral / Friend System:** *(Completed)*
+  * Share your code; friends claim starting bonuses while referrers earn claimable Elden Buck rewards via dedicated cloud collections.
+  * Send & receive daily friend gifts (+5 EB daily) with one-tap gifting.
+  * Real-time incoming friend request notification dots on profile tabs.
+  * Dedicated Friendship Progression Screen tracking friendship XP (10/10), heart meters, and cooperative quests.
 
 ---
 
 ### 📅 IV. Retention & Daily Progression
 * [x] **19. 📅 30-Day Daily Login Calendar:** *(Completed)*
-* [ ] **20. 📜 Daily Quests & Weekly Bounties:**
-  * 3 daily missions (*Collect 3 diamonds*, *Spin twice*, *Keep 30X active for 2 hrs*) rewarding bonus EB.
+* [x] **20. 📜 Daily Quests & Weekly Bounties:** *(Completed - Phase 1 Daily Quests)*
+  * Integrated multi-tab Daily Rewards modal with live tab switcher between daily streak rewards and actionable Daily Quests.
+  * Real-time completion checkmarks for claiming rewards, spinning wheels, gifting friends, and surveying realm territories.
 * [ ] **21. ⚡ "Blood Moon / Solar Flare" 50X Weekend Events:**
   * 24-hour weekend flash events where the boost multiplier temporarily jumps to **50X**.
 * [ ] **22. 📈 Prestige Milestones & Player Leveling Track:**
@@ -1065,6 +1069,8 @@ This separation is extremely important because it prevents the game's internal e
     ├── chat.js         # Real-time community global chat drawer with moderation & anti-spam
     ├── citadels.js     # 3D Dyson Sphere monuments, 5km horizon culling, forge upgrades & siege combat
     ├── pool.js         # 1% Weekly Realm Treasury Dividend Pool engine & Monday distribution
+    ├── friends.js      # Firestore-backed friendship network, daily gifts & request notification badges
+    ├── referrals.js    # Safe claimable bonus referral ledger & promo code claim flow
     └── main.js         # Game loop, GPS power-saving controller, camera transitions & UI wiring
 ```
 
@@ -1115,7 +1121,33 @@ All gameplay tuning parameters are centralized in **`js/config.js`**:
 
 ---
 
-## 👥 3D Assets & Model Attributions
+## � Recent Changelog & System Updates
+
+### Patch `0.1.8.24b` — Social Expansion, Account Integrity & Mobile Responsiveness
+* **👥 Full Firestore Friends System (`js/friends.js`):**
+  * Send, accept, and decline friend requests with live pending notification badges (pulsing red dot).
+  * Direct daily gift exchange (+5 EB/day) without cross-player document write security conflicts.
+  * Interactive Friendship Detail card with 10-heart progress tracker and friendship quests.
+* **🎁 Claimable Referral Architecture (`js/referrals.js` & `firestore.rules`):**
+  * Eliminated risky cross-player document mutations by introducing a dedicated `referral_bonuses` claimable collection.
+  * Real-time pending bonus viewer and clear visual feedback ("Applied" button state + celebration toast).
+* **🔐 Canonical Account Identity & Duplicate Migration (`js/auth.js` & `js/storage.js`):**
+  * Added `migrateLegacyDuplicateAccounts()` on sign-in to consolidate orphaned duplicate saves under the canonical Google UID.
+  * Added save mismatch guards preventing stale local storage profiles from overwriting authenticated cloud accounts.
+* **📜 Daily Quests Integration (`js/main.js` & `index.html`):**
+  * Upgraded Daily Login Calendar modal into a dual-tab experience: Daily Streak Rewards and Daily Quests.
+  * Live status tracking for active daily goals with instant visual checkmarks.
+* **🦅 Expanded 25-Mile Bird's-Eye View (`js/grid.js`):**
+  * Scaled the bird's-eye distance threshold to 40,000m (~25 miles) for broad city-scale territory overviews.
+* **📱 Narrow Mobile Screen Responsive Suite (`css/style.css`):**
+  * Scaled Fortune Wheel to `min(250px, 72vw)` to prevent canvas overflow and preserve one-screen visibility on small displays.
+  * Compact responsive layouts for Player Info, My Land statistics, and multi-button action rows.
+* **🎨 100% In-Game Modal UX:**
+  * Replaced all native browser `alert()` and `confirm()` prompts with styled, responsive in-game dialogs (`showToast` and `gameConfirm`).
+
+---
+
+## �👥 3D Assets & Model Attributions
 
 * **Character Models:** Mixamo / Adobe (CC0 / Royalty Free Standard)
 * **CesiumMan & Xbot:** Khronos Group & Three.js Official Samples

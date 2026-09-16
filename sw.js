@@ -1,5 +1,5 @@
 // Bump this version string whenever you deploy an update!
-const CACHE_NAME = 'elden-EARTH-v01.23b';
+const CACHE_NAME = 'elden-EARTH-v15.11b';
 
 const ASSETS_TO_CACHE = [
     './',
@@ -12,11 +12,13 @@ const ASSETS_TO_CACHE = [
     './models/Xbot.glb',
     './js/main.js',
     './js/foliage.js',
+    './js/friends.js',
     './js/loading.js',
     './js/leaderboard.js',
     './js/wheel.js',
     './js/diamonds.js',
     './js/auth.js',
+    './js/anticheat.js',
     './js/storage.js',
     './js/grid.js',
     './js/geo.js',
@@ -25,7 +27,8 @@ const ASSETS_TO_CACHE = [
     './js/character.js',
     './js/citadels.js',
     './js/chat.js',
-    './js/pool.js'
+    './js/pool.js',
+    './js/referrals.js'
 ];
 
 // 1. Force Immediate Installation
