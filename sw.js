@@ -1,5 +1,5 @@
 // Bump this version string whenever you deploy an update!
-const CACHE_NAME = 'elden-EARTH-v05.01b';
+const CACHE_NAME = 'elden-EARTH-v15.13b';
 
 const ASSETS_TO_CACHE = [
     './',
@@ -28,7 +28,8 @@ const ASSETS_TO_CACHE = [
     './js/citadels.js',
     './js/chat.js',
     './js/pool.js',
-    './js/referrals.js'
+    './js/referrals.js',
+    './js/server-anticheat.js'
 ];
 
 // 1. Force Immediate Installation

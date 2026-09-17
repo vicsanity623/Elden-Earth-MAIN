@@ -8,5 +8,6 @@ venvaxiom
 .venv
 package-lock.json
 node_modules/
-firestore.rules
-functions/
+functions/node_modules/
+functions/eldenearth-service-account.json
+.firebaserc
