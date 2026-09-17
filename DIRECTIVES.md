@@ -1,11 +1,11 @@
-# 🏛️ ELDEN EARTH — DEVELOPER & AI AGENT OPERATIONAL DIRECTIVES
+# ELDEN EARTH — DEVELOPER & AI AGENT OPERATIONAL DIRECTIVES
 > **Repository:** `vicsanity623/Elden-Earth-MAIN`  
 > **Target Audience:** GitHub Copilot, OpenCode Agents, Autonomous Coding Assistants, and Human Maintainers.  
 > **Mandate:** Implement security, anti-spoofing, and financial safeguards systematically in strict phases. Ensure zero regressions, zero orphan code, zero duplicate variable/function declarations, and preserve all existing gameplay mechanics.
 
 ---
 
-## 🛑 NON-NEGOTIABLE OPERATIONAL LAWS
+## NON-NEGOTIABLE OPERATIONAL LAWS
 
 Every AI Agent modifying this codebase MUST enforce the following rules:
 
@@ -31,46 +31,87 @@ Every AI Agent modifying this codebase MUST enforce the following rules:
 
 ---
 
-## 🗺️ IMPLEMENTATION PHASES & ROADMAP
+## IMPLEMENTATION PHASES & ROADMAP
 
 ---
 
-### 📍 PHASE 1: Multi-Layered Location & Network Verification
+### PHASE 1: Multi-Layered Location & Network Verification
+**Status: COMPLETED**
 
 #### Goal:
 Ensure players cannot claim parcels, harvest diamonds, or collect rewards via GPS spoofing, VPNs, or mock coordinate injectors.
 
 #### Tasks:
-* [ ] **1.1 IP Geolocation & VPN Cross-Referencing:**
-  * In `js/geo.js`, implement a lightweight network origin check (e.g., query public IP lookup API during initial load or land purchases).
-  * Compare the coarse IP-derived location (Country/Region/City) with the hardware GPS coordinates.
-  * If distance between IP location and GPS coordinates exceeds **500 km** (and user is not on cellular carrier roaming), flag session as `isNetworkSuspicious = true`.
-  * If a known VPN or Datacenter IP is detected, disable real-money withdrawal buttons and display a soft advisory.
-* [ ] **1.2 Speed & Teleportation Sanity Watchdog:**
-  * In `js/main.js` (`beginWatch` / `handlePosition`), track `(lastLat, lastLon, lastTimestamp)`.
-  * Calculate realistic ground velocity:
-    $$\text{Velocity} = \frac{\text{Distance (km)}}{\text{Delta Time (hours)}}$$
-  * If a player travels at speeds $>900\text{ km/h}$ over distances $>5\text{ km}$, immediately block the position update.
-  * Log infraction to `state.antiCheatStrikes`. If strikes $\ge 3$, call `triggerInstantBan()`.
-* [ ] **1.3 GPS Accuracy & Mock Provider Detection:**
-  * Inspect `coords.accuracy` in `navigator.geolocation`. If `coords.accuracy <= 0` or exactly equal to artificial simulator defaults (e.g., `accuracy === 5.000000` with 0 altitude variance), flag the position.
-  * If `coords.altitude === null` and `coords.speed === null` while moving across tiles, flag as potential emulator.
+* [x] **1.1 IP Geolocation & VPN Cross-Referencing:**
+  * `js/geo.js` — `NetworkVerifier` module queries `ip-api.com`, compares IP-derived location vs hardware GPS.
+  * Flags VPN, datacenter, proxy connections via ISP keyword matching.
+  * Flags sessions where IP-GPS distance exceeds 500 km (exempting mobile/cellular).
+  * Results stored on `state.networkVerification` for game-wide access.
+  * `gateCashoutButtons()` dims withdrawal UI when VPN/datacenter detected.
+* [x] **1.2 Speed & Teleportation Sanity Watchdog:**
+  * `js/main.js` — tracks `(lastLat, lastLon, lastTimestamp)` across GPS updates.
+  * Calculates velocity: `km / hours`.
+  * Blocks position if speed > 900 km/h over distances > 5 km.
+  * Increments `state.antiCheatStrikes` per violation; triggers `triggerInstantBan()` at 3 strikes.
+  * Ban logs to Firestore `cheat_reports`, signs out, and redirects.
+* [x] **1.3 GPS Accuracy & Mock Provider Detection:**
+  * `js/main.js` — `detectMockProvider()` function.
+  * Detects `accuracy <= 0` (impossible on real hardware).
+  * Detects exact simulator defaults (`accuracy === 5` with `altitudeAccuracy === 0`).
+  * Detects artificial precision (`5.000000` with trailing zeros).
+  * Detects `altitude === null && speed === null` while player is moving > 10m.
 
 #### Verification & Exit Criteria:
-* Run local mock location tests.
-* Ensure authentic walking players (0–15 km/h) experience zero false positives.
-* Bump `sw.js` cache.
+* Local mock location tests passed.
+* Authentic walking players (0-15 km/h) experience zero false positives.
+* `sw.js` cache bumped to `v15.13b`.
 
 ---
 
-### 🛡️ PHASE 2: Hardware & Client Environment Integrity
+### SERVER-SIDE ANTI-CHEAT ARCHITECTURE
+**Status: DEPLOYED**
+
+#### Goal:
+Move all critical validation from client (untrusted) to server (trusted). Client-side checks remain as first-pass filters to reduce Cloud Function calls.
+
+#### Cloud Functions (deployed to `us-central1`):
+| Function | Purpose |
+|---|---|
+| `validatePosition` | Server-side velocity tracking, teleport/mock GPS detection, strike system with auto-ban via `admin.auth().revokeRefreshTokens()` |
+| `validatePurchase` | Server-authoritative land buying — validates EB balance, cooldown, proximity, velocity, computes rarity server-side, writes plot atomically |
+| `validateCollect` | Server-side diamond collection — validates proximity, velocity, prevents double-collect via `diamond_collects` collection |
+
+#### Client Integration:
+| File | Integration Point |
+|---|---|
+| `js/server-anticheat.js` | Bridge module — initializes Firebase Functions, provides `sendPosition()`, `validatePurchase()`, `validateCollect()` |
+| `js/main.js` | Sends position to `validatePosition` every ~25s after local checks pass |
+| `js/grid.js` | `executeBuy()` calls `validatePurchase` BEFORE any client Firestore write; uses server-computed rarity |
+| `js/diamonds.js` | `attemptCollect()` calls `validateCollect` before allowing collection |
+
+#### Firestore Collections (admin SDK only — client cannot write):
+| Collection | Purpose |
+|---|---|
+| `player_positions/{uid}` | Server-side position checkpoints with velocity tracking |
+| `diamond_collects/{uid}_{diamondId}` | Double-collect prevention records |
+
+#### Deployment:
+```bash
+firebase deploy --only functions
+firebase deploy --only firestore:rules
+```
+
+---
+
+### PHASE 2: Hardware & Client Environment Integrity
+**Status: IN PROGRESS**
 
 #### Goal:
 Detect tampered browser environments, mobile dev-tools mock locations, and unauthorized automation scripts.
 
 #### Tasks:
 * [ ] **2.1 Developer Mock Location & Automation Detection:**
-  * In `js/auth.js` / `js/main.js`, check for automation signals:
+  * In `js/main.js`, check for automation signals:
     * `navigator.webdriver === true` (Headless Chrome / Puppeteer / Selenium).
     * Unusual User-Agent strings or missing hardware sensors (`window.DeviceOrientationEvent`).
   * If automated browser is detected, abort game initialization and redirect to `#banned-screen`.
@@ -88,7 +129,7 @@ Detect tampered browser environments, mobile dev-tools mock locations, and unaut
 
 ---
 
-### 💰 PHASE 3: Financial Anti-Fraud & Withdrawal Ledger
+### PHASE 3: Financial Anti-Fraud & Withdrawal Ledger
 
 #### Goal:
 Safeguard the game treasury by preventing sudden draining of real-money payouts, enforcing KYC readiness, and logging all cashout actions into an immutable ledger.
@@ -98,12 +139,12 @@ Safeguard the game treasury by preventing sudden draining of real-money payouts,
   * In `js/storage.js` / withdrawal logic:
     * Check `state.createdAt` and `Object.keys(state.plots || {}).length`.
     * Accounts created post-launch must satisfy:
-      $$\text{Account Age} \ge 90\text{ Days} \quad \text{OR} \quad \text{Plots Owned} \ge 500$$
+      * Account Age >= 90 Days OR Plots Owned >= 500.
     * Early Adopters (accounts created prior to launch date with `accountHealedV1 === true` or registered before cut-off) bypass this gate into the VIP Founder queue.
 * [ ] **3.2 Strictly Enforced Weekly Withdrawal Limits (TBD Thresholds):**
   * All withdrawal requests are capped equally across all players (e.g., minimum $2.00, maximum weekly cap per player).
   * Prevent any account from claiming more than the global per-player weekly ceiling, regardless of total accumulated in-game rent balance.
-* [ ] **3.3 Delayed Withdrawal Review Pipeline (24–72 Hour Audit Window):**
+* [ ] **3.3 Delayed Withdrawal Review Pipeline (24-72 Hour Audit Window):**
   * Withdrawals must NEVER be executed instantaneously.
   * When a player requests a cashout, write a pending request to Firestore `/withdrawals/{requestId}` with:
     * `userId`, `amount`, `paypalEmail`, `status: "pending_review"`.
@@ -120,17 +161,17 @@ Safeguard the game treasury by preventing sudden draining of real-money payouts,
 
 ---
 
-### 🏰 PHASE 4: Territory Sovereign Rules & Multi-Language Normalization
+### PHASE 4: Territory Sovereign Rules & Multi-Language Normalization
 
 #### Goal:
 Guarantee that Mayors, Governors, and Presidents are strictly mapped to international territories without text corruption or cross-border leakage.
 
 #### Tasks:
 * [ ] **4.1 Universal ISO 3166-1 Alpha-2 Country & Flag Mapping:**
-  * Ensure `normalizeCountry()` in `js/leaderboard.js` handles English, French (`États-Unis d'Amérique`), German (`Vereinigte Staaten`), Spanish (`Estados Unidos`), and international variants cleanly into standard country buckets.
+  * Ensure `normalizeCountry()` in `js/leaderboard.js` handles English, French, German, Spanish, and international variants cleanly into standard country buckets.
   * Maintain mathematical Unicode flag generation via `getFlagEmoji(countryCode)`.
 * [ ] **4.2 North Korea & Embargoed Territory Blacklist:**
-  * Keep bounding box geofence ($37.6^\circ\text{N} - 43.1^\circ\text{N}, 124.1^\circ\text{E} - 130.7^\circ\text{E}$) and `country_code === "kp"` strictly blocked from all land purchases, presences, and leaderboard listings.
+  * Keep bounding box geofence and `country_code === "kp"` strictly blocked from all land purchases, presences, and leaderboard listings.
   * Any attempt to ping within this box triggers immediate session termination.
 * [ ] **4.3 Real-Time Royalty Stacking Integrity:**
   * Verify `awardTerritoryDividends()` in `js/leaderboard.js` correctly awards stackable royalties (Mayor + Governor + President) up to +6 EB without dropping intermediate titles.
@@ -142,7 +183,7 @@ Guarantee that Mayors, Governors, and Presidents are strictly mapped to internat
 
 ---
 
-## 🧹 CLEAN CODE & ARCHITECTURE CHECKLIST FOR ALL AGENTS
+## CLEAN CODE & ARCHITECTURE CHECKLIST FOR ALL AGENTS
 
 Before completing any task, every agent MUST verify:
 
@@ -151,3 +192,21 @@ Before completing any task, every agent MUST verify:
 3. [ ] **No Silent Failures:** Ensure `try/catch` blocks log warnings with `console.warn("[Module] Notice:", e)` rather than failing silently.
 4. [ ] **CSS Bounding Check:** Test all modal and HUD additions against mobile screen widths down to `360px` to guarantee zero horizontal overflow or overlapping text.
 5. [ ] **Version Bump:** Update `GAME_VERSION` in `js/config.js` and `CACHE_NAME` in `sw.js`.
+
+---
+
+## FILE MANIFEST
+
+| File | Purpose |
+|---|---|
+| `functions/index.js` | Cloud Functions: validatePosition, validatePurchase, validateCollect |
+| `functions/package.json` | Cloud Functions dependencies |
+| `js/server-anticheat.js` | Client bridge to Cloud Functions |
+| `js/geo.js` | Geometry + NetworkVerifier (IP/VPN detection) |
+| `js/anticheat.js` | Client-side GPS validation, embargo, rate limiting |
+| `js/main.js` | Game loop + teleport watchdog + mock GPS detection |
+| `js/grid.js` | Land purchases (server-validated) |
+| `js/diamonds.js` | Diamond collection (server-validated) |
+| `js/storage.js` | Save data + Firestore cloud sync |
+| `firestore.rules` | Firestore security rules |
+| `sw.js` | Service worker + PWA cache |
