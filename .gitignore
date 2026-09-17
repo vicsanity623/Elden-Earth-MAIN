@@ -11,3 +11,4 @@ node_modules/
 functions/node_modules/
 functions/eldenearth-service-account.json
 .firebaserc
+server/
