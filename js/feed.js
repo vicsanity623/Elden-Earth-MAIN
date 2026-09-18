@@ -40,7 +40,9 @@ const Feed = (() => {
     };
 
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`, {
+        headers: { "User-Agent": "EldenEarth/1.0 (vicsanity623.github.io)" }
+      });
       const data = await res.json();
       const addr = data.address || {};
       const city = addr.city || addr.town || addr.municipality || addr.village || "Phoenix";
