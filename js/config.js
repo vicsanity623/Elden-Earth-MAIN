@@ -4,12 +4,12 @@
 // ============================================================
 const CONFIG = {
   // --- Game Version (bump on every patch to auto-wipe stale localStorage) ---
-  GAME_VERSION: "0.1.9.39",
+  GAME_VERSION: "0.1.9.41",
 
   // --- Realm Server Epoch ---
   // Bump this timestamp whenever you intentionally wipe the Firestore database.
   // Any local or cloud save created before git statusthis epoch is treated as stale.
-  REALM_SERVER_EPOCH: 1789712559000,
+  REALM_SERVER_EPOCH: 1789578877,
 
   // --- Map Tile Engine & Rate Limit Fallback ---
   // Set to true to bypass Mapbox completely and use unlimited 100% free OpenFreeMap

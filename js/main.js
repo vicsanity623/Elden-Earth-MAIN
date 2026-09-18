@@ -952,12 +952,19 @@
       }).catch(() => {});
     }
 
-    const mapStyle = "https://tiles.openfreemap.org/styles/dark";
+    const MAP_STYLES = {
+      dark: "https://tiles.openfreemap.org/styles/dark",
+      liberty: "https://tiles.openfreemap.org/styles/liberty",
+      positron: "https://tiles.openfreemap.org/styles/positron",
+      bright: "https://tiles.openfreemap.org/styles/bright",
+    };
+    const mapStyle = localStorage.getItem("eldenEarth.mapStyle") || "dark";
+    const styleUrl = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
 
     // 1. Initialize 3D Camera with 2-Finger Vertical Tilt & 1-Finger Orbit
     map = new mapboxgl.Map({
       container: "map",
-      style: mapStyle,
+      style: styleUrl,
       center: [currentPos.lon, currentPos.lat],
       zoom: 18.0,
       minZoom: 16.4,     // 1 mile max zoom-out
@@ -1167,6 +1174,10 @@
           });
         }
       } catch (e) {}
+      // Apply 3D buildings if user has 3D style selected
+      if ((localStorage.getItem("eldenEarth.mapStyle") || "dark") === "3d") {
+        toggle3DBuildings(true);
+      }
     });
 
     Wheel.init();
@@ -2505,6 +2516,64 @@
         window.location.reload();
       }
     });
+
+    // --- MAP STYLE TOGGLE ---
+    function toggle3DBuildings(enable) {
+      if (!map) return;
+      const layers = map.getStyle().layers;
+      let labelLayerId;
+      for (let i = 0; i < layers.length; i++) {
+        if (layers[i].type === "symbol" && layers[i].layout["text-field"]) {
+          labelLayerId = layers[i].id;
+          break;
+        }
+      }
+      // Remove existing 3D buildings layer
+      if (map.getLayer("3d-buildings")) {
+        map.removeLayer("3d-buildings");
+      }
+      if (enable && labelLayerId) {
+        map.addLayer({
+          id: "3d-buildings",
+          source: "carto",
+          "source-layer": "building",
+          type: "fill-extrusion",
+          minzoom: 15,
+          paint: {
+            "fill-extrusion-color": [
+              "interpolate", ["linear"], ["get", "render_height"], 0, "#1a1a2e", 50, "#2a3a5c", 100, "#3a5a8c"
+            ],
+            "fill-extrusion-height": ["get", "render_height"],
+            "fill-extrusion-base": ["get", "render_min_height"],
+            "fill-extrusion-opacity": 0.7,
+          },
+        }, labelLayerId);
+      }
+    }
+
+    function applyMapStyle(styleKey) {
+      if (!map) return;
+      const is3D = styleKey === "3d";
+      const url = is3D ? (MAP_STYLES.dark) : (MAP_STYLES[styleKey] || MAP_STYLES.dark);
+      map.setStyle(url);
+      map.once("style.load", () => {
+        toggle3DBuildings(is3D);
+      });
+      localStorage.setItem("eldenEarth.mapStyle", styleKey);
+      // Update button highlights
+      document.querySelectorAll(".map-style-btn").forEach(btn => {
+        const isActive = btn.dataset.style === styleKey;
+        btn.style.borderColor = isActive ? "#4fd6c4" : "#555";
+        btn.style.color = isActive ? "#4fd6c4" : "#ccc";
+        btn.style.background = isActive ? "rgba(79,214,196,0.1)" : "#1a1a2e";
+      });
+    }
+
+    document.querySelectorAll(".map-style-btn").forEach(btn => {
+      btn.addEventListener("click", () => applyMapStyle(btn.dataset.style));
+    });
+    // Highlight the active style on load
+    applyMapStyle(mapStyle);
 
     // --- DELETE ACCOUNT PERMANENTLY ---
     el("delete-account-btn")?.addEventListener("click", async () => {

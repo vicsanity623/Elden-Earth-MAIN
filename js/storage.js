@@ -376,7 +376,7 @@ const Store = (() => {
     }
 
     // SESSION LOCK: Try to claim the session before loading data
-    const LOCK_STALE_MS = 15000; // 15 seconds — if lock is older, allow takeover
+    const LOCK_STALE_MS = 240000; // 4 minutes — prevents mobile app-switch takeovers
     try {
       const saveDoc = await firestore.collection("saves").doc(playerId).get();
       if (saveDoc.exists) {
@@ -483,6 +483,12 @@ const Store = (() => {
           // LOCAL IS NEWER: Device has uncommitted actions (boost, wheel, etc.)
           // Keep local state, but merge in any cloud-only plots
           console.log(`[Cloud] Local state is newer (${localTimestamp} > ${cloudTimestamp}). Preserving local progress.`);
+          // Preserve ephemeral local-only state across sync
+          const prevLiveDiamonds = state.liveDiamonds || {};
+          const prevCollected = state.collectedDiamondIds || [];
+          const prevLastDiamondSpawn = state.lastDiamondSpawn || 0;
+          const prevLastDiamondMovementAt = state.lastDiamondMovementAt || 0;
+          const prevLastDiamondPlayerPosition = state.lastDiamondPlayerPosition || null;
           if (cloudData.plots) {
             if (!state.plots) state.plots = {};
             for (const plotId in cloudData.plots) {
@@ -495,6 +501,12 @@ const Store = (() => {
           // Merge calendar (take most recent values)
           state.calendar = mergedCalendar;
           state.dailyQuests = mergedQuests;
+          // Restore ephemeral local-only state
+          state.liveDiamonds = prevLiveDiamonds;
+          state.collectedDiamondIds = prevCollected;
+          state.lastDiamondSpawn = prevLastDiamondSpawn;
+          state.lastDiamondMovementAt = prevLastDiamondMovementAt;
+          state.lastDiamondPlayerPosition = prevLastDiamondPlayerPosition;
           // Upload merged state to cloud immediately
           state.lastSavedAt = Date.now();
           localStorage.setItem(KEY, JSON.stringify(state));
@@ -503,6 +515,12 @@ const Store = (() => {
         } else {
           // CLOUD IS NEWER OR EQUAL: Safely adopt cloud data
           console.log(`[Cloud] Cloud state is newer or equal (${cloudTimestamp} >= ${localTimestamp}). Adopting cloud data.`);
+          // Preserve ephemeral local-only state before cloud overwrite
+          const prevLiveDiamonds = state.liveDiamonds || {};
+          const prevCollected = state.collectedDiamondIds || [];
+          const prevLastDiamondSpawn = state.lastDiamondSpawn || 0;
+          const prevLastDiamondMovementAt = state.lastDiamondMovementAt || 0;
+          const prevLastDiamondPlayerPosition = state.lastDiamondPlayerPosition || null;
           state = Object.assign(defaultState(), cloudData);
           state._gameVersion = (typeof CONFIG !== "undefined" && CONFIG.GAME_VERSION) || "0.0.0";
           state.calendar = mergedCalendar;
@@ -517,6 +535,13 @@ const Store = (() => {
           if (currentAvatar && currentAvatar !== "🙂" && (!state.player.avatar || state.player.avatar === "🙂")) {
             state.player.avatar = currentAvatar;
           }
+
+          // Restore ephemeral local-only state (diamonds are not in cloud)
+          state.liveDiamonds = prevLiveDiamonds;
+          state.collectedDiamondIds = prevCollected;
+          state.lastDiamondSpawn = prevLastDiamondSpawn;
+          state.lastDiamondMovementAt = prevLastDiamondMovementAt;
+          state.lastDiamondPlayerPosition = prevLastDiamondPlayerPosition;
 
           localStorage.setItem(KEY, JSON.stringify(state));
         }
@@ -561,7 +586,7 @@ const Store = (() => {
           // Another session stole the lock
           if (lock && lock.sessionId !== localSessionId) {
             const lockAge = Date.now() - (lock.lockedAt || 0);
-            if (lockAge < 30000) { // Only block if lock is fresh (< 30s)
+            if (lockAge < 120000) { // Only block if lock is fresh (< 2 min)
               isSessionPaused = true;
               console.warn("[Session] Account taken over by another tab! Pausing.");
               const conflictModal = document.getElementById("session-conflict-modal");
