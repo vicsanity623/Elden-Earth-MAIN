@@ -594,9 +594,9 @@ const Citadels = (() => {
 
     const currentTier = (cit.rarity?.key || cit.rarity || "common").toLowerCase();
     const fallbackCosts = {
-      common: { next: "rare", eb: 50, diamonds: 75, nextLabel: "Rare Hold", nextColor: "#4fd6c4" },
-      rare:   { next: "epic", eb: 100, diamonds: 125, nextLabel: "Epic Hold", nextColor: "#a86ee0" },
-      epic:   { next: "legendary", eb: 300, diamonds: 400, nextLabel: "Legendary Hold", nextColor: "#f0d38a" },
+      common: { next: "rare", eb: 50, diamonds: 75, cashRequired: 0.50, nextLabel: "Rare Hold", nextColor: "#4fd6c4" },
+      rare:   { next: "epic", eb: 100, diamonds: 125, cashRequired: 0.75, nextLabel: "Epic Hold", nextColor: "#a86ee0" },
+      epic:   { next: "legendary", eb: 300, diamonds: 400, cashRequired: 1.125, nextLabel: "Legendary Hold", nextColor: "#f0d38a" },
     };
     const costs = (CONFIG.CITADEL_UPGRADE_COSTS && CONFIG.CITADEL_UPGRADE_COSTS[currentTier]) || fallbackCosts[currentTier];
     if (!costs) return;
@@ -615,6 +615,27 @@ const Citadels = (() => {
     document.getElementById("forge-cost-eb").textContent = costs.eb;
     document.getElementById("forge-cost-diamonds").textContent = costs.diamonds;
 
+    // Cash balance lock (same pattern as extractor)
+    const state = Store.get();
+    const cashBalance = Number(state?.cash) || 0;
+    const cashReq = costs.cashRequired || 0;
+    const hasEnoughCash = cashBalance >= cashReq;
+
+    const forgePayWrap = document.querySelector(".forge-payment-actions");
+    const forgeLockedNotice = document.getElementById("forge-locked-notice");
+    const forgeBtns = forgePayWrap ? forgePayWrap.querySelectorAll("button") : [];
+
+    if (hasEnoughCash) {
+      forgeBtns.forEach(b => b.style.display = "");
+      if (forgeLockedNotice) forgeLockedNotice.classList.add("hidden");
+    } else {
+      forgeBtns.forEach(b => b.style.display = "none");
+      if (forgeLockedNotice) {
+        forgeLockedNotice.classList.remove("hidden");
+        forgeLockedNotice.innerHTML = `🔒 Reach $${cashReq.toFixed(2)} Cash Balance to level up!`;
+      }
+    }
+
     document.getElementById("citadel-modal")?.classList.add("hidden");
     document.getElementById("citadel-upgrade-modal")?.classList.remove("hidden");
   }
@@ -628,6 +649,14 @@ const Citadels = (() => {
     if (!costs) return;
 
     const state = Store.get();
+
+    // Cash balance gate — must have enough to level up
+    const cashBalance = Number(state?.cash) || 0;
+    const cashReq = costs.cashRequired || 0;
+    if (cashBalance < cashReq) {
+      showToast(`🔒 Reach $${cashReq.toFixed(2)} Cash Balance to level up!`);
+      return;
+    }
 
     if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
       showToast("⚠️ Server connection required to upgrade a Citadel.", 3500);
