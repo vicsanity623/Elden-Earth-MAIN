@@ -952,12 +952,12 @@
     }
 
     const MAP_STYLES = {
-      dark: "https://tiles.openfreemap.org/styles/dark",
+      "elden-earth": "https://tiles.openfreemap.org/styles/dark",
       liberty: "https://tiles.openfreemap.org/styles/liberty",
       positron: "https://tiles.openfreemap.org/styles/positron",
       bright: "https://tiles.openfreemap.org/styles/bright",
     };
-    const mapStyle = localStorage.getItem("eldenEarth.mapStyle") || "dark";
+    const mapStyle = localStorage.getItem("eldenEarth.mapStyle") || "elden-earth";
     const styleUrl = MAP_STYLES[mapStyle] || MAP_STYLES.dark;
 
     // 1. Initialize 3D Camera with 2-Finger Vertical Tilt & 1-Finger Orbit
@@ -1017,10 +1017,15 @@
     function applyMapStyle(styleKey) {
       if (!map) return;
       const is3D = styleKey === "3d";
-      const url = is3D ? (MAP_STYLES.dark) : (MAP_STYLES[styleKey] || MAP_STYLES.dark);
+      const url = is3D ? (MAP_STYLES["elden-earth"]) : (MAP_STYLES[styleKey] || MAP_STYLES["elden-earth"]);
       map.setStyle(url);
       map.once("style.load", () => {
+        // Re-add all game layers that setStyle destroyed
+        Grid.render();
+        setupGameLayers();
         toggle3DBuildings(is3D);
+        Diamonds.renderAll();
+        if (typeof Citadels !== "undefined") Citadels.render();
       });
       localStorage.setItem("eldenEarth.mapStyle", styleKey);
       document.querySelectorAll(".map-style-btn").forEach(btn => {
@@ -1229,7 +1234,7 @@
         }
       } catch (e) {}
       // Apply 3D buildings if user has 3D style selected
-      if ((localStorage.getItem("eldenEarth.mapStyle") || "dark") === "3d") {
+      if ((localStorage.getItem("eldenEarth.mapStyle") || "elden-earth") === "3d") {
         toggle3DBuildings(true);
       }
     });
