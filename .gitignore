@@ -12,4 +12,6 @@ functions/node_modules/
 functions/eldenearth-service-account.json
 .firebaserc
 firestore.rules
+js/
+functions/
 server/
