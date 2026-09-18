@@ -154,7 +154,6 @@
 
   function openModal(id) { el(id).classList.remove("hidden"); }
   function closeModal(id) {
-    if (id === "session-conflict-modal") return; // ⛔ NEVER allow closing the conflict screen!
     const m = el(id);
     if (m) m.classList.add("hidden");
   }

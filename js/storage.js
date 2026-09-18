@@ -375,31 +375,18 @@ const Store = (() => {
       localStorage.setItem(KEY, JSON.stringify(state));
     }
 
-    // SESSION LOCK: Try to claim the session before loading data
-    const LOCK_STALE_MS = 240000; // 4 minutes — prevents mobile app-switch takeovers
+    // SESSION LOCK: Always take over — no more blocking
     try {
       const saveDoc = await firestore.collection("saves").doc(playerId).get();
       if (saveDoc.exists) {
         const saveData = saveDoc.data();
         const existingLock = saveData.sessionLock;
 
-        // If another session holds the lock and it's not stale, BLOCK this tab
         if (existingLock && existingLock.sessionId !== localSessionId) {
-          const lockAge = Date.now() - (existingLock.lockedAt || 0);
-          if (lockAge < LOCK_STALE_MS) {
-            isSessionPaused = true;
-            cloudSyncComplete = true;
-            console.warn(`[Session] BLOCKED — account locked by session ${existingLock.sessionId ? existingLock.sessionId.slice(0, 12) + "..." : "unknown"} (${Math.round(lockAge / 1000)}s ago)`);
-            const conflictModal = document.getElementById("session-conflict-modal");
-            if (conflictModal) conflictModal.classList.remove("hidden");
-            return null; // STOP — do not load game data
-          }
-          // Lock is stale (> 15s) — allow takeover
-          console.log(`[Session] Stale lock detected (${Math.round(lockAge / 1000)}s). Taking over.`);
+          console.log(`[Session] Taking over from previous session.`);
         }
       }
 
-      // The lock is persisted through syncSafeState after the authoritative save read.
       state.sessionLock = { sessionId: localSessionId, lockedAt: Date.now() };
       isSessionPaused = false;
     } catch (lockErr) {
@@ -572,35 +559,10 @@ const Store = (() => {
       // Essential data loaded — unblock the game immediately
       cloudSyncComplete = true;
 
-      // Non-critical: session listener (wrapped separately so failures don't brick the game)
+      // Non-critical: session listener removed — cloud sync handles data safely
       try {
         state.activeSessionId = localSessionId;
         isSessionPaused = false;
-
-        // Listen for session lock changes — if another tab takes over, pause immediately
-        firestore.collection("saves").doc(playerId).onSnapshot((snap) => {
-          if (!snap.exists) return;
-          const d = snap.data();
-          const lock = d.sessionLock;
-
-          // Another session stole the lock
-          if (lock && lock.sessionId !== localSessionId) {
-            const lockAge = Date.now() - (lock.lockedAt || 0);
-            if (lockAge < 120000) { // Only block if lock is fresh (< 2 min)
-              isSessionPaused = true;
-              console.warn("[Session] Account taken over by another tab! Pausing.");
-              const conflictModal = document.getElementById("session-conflict-modal");
-              if (conflictModal) conflictModal.classList.remove("hidden");
-            }
-          }
-        });
-
-        // Heartbeat: Refresh the lock every 10 seconds to prove we're alive
-        setInterval(() => {
-          if (isSessionPaused || !playerId) return;
-          state.sessionLock = { sessionId: localSessionId, lockedAt: Date.now() };
-          syncSafeStateToCloud();
-        }, 10000);
       } catch (sessionErr) {
         console.warn("[Cloud] Session claim non-critical error:", sessionErr);
       }
