@@ -966,7 +966,7 @@
       style: styleUrl,
       center: [currentPos.lon, currentPos.lat],
       zoom: 18.0,
-      minZoom: 16.4,     // 1 mile max zoom-out
+      minZoom: 2,        // Allow full globe zoom-out
       maxZoom: 20.0,     // Street-level max zoom-in
       pitch: 75,         // Default 60° angle
       minPitch: 0,       // Allows flat 0° top-down view
@@ -2008,74 +2008,157 @@
       reader.readAsDataURL(file);
     });
 
-    // 3. Cinematic "Bird's Eye View" Fly-To — Player Land
-    el("birds-eye-trigger-btn")?.addEventListener("click", () => {
+    // 3. Cinematic "Bird's Eye View" — Globe Zoom with Anonymized Territories
+    let isBirdsEye = false;
+
+    function enterBirdsEye() {
+      if (isBirdsEye || !map || !currentPos) return;
+      isBirdsEye = true;
+
+      // Hide plot layers
+      ["plots-grass-base", "plots-fill", "plots-line"].forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+      });
+      ["empty-grid-fill", "empty-grid-line"].forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+      });
+
+      // Build anonymized territory fills from ALL plots (grouped by state)
       const state = Store.get();
-      closeModal("player-info-modal");
-
-      const startCenter = map.getCenter();
       const plots = state.plots || {};
-      const tids = Object.keys(plots);
+      const stateGroups = {};
 
-      let targetLng = startCenter.lng;
-      let targetLat = startCenter.lat;
-
-      if (tids.length > 0) {
-        let totalX = 0;
-        let totalY = 0;
-
-        tids.forEach(tid => {
-          const p = plots[tid];
-          totalX += parseInt(p.tx, 10);
-          totalY += parseInt(p.ty, 10);
-        });
-
-        const center = Geo.fromMercator(
-          (totalX / tids.length) * CONFIG.TILE_SIZE_METERS,
-          (totalY / tids.length) * CONFIG.TILE_SIZE_METERS
-        );
-
-        targetLat = center.lat;
-        targetLng = center.lon;
-      } else if (currentPos) {
-        targetLat = currentPos.lat;
-        targetLng = currentPos.lon;
+      for (const tid in plots) {
+        const p = plots[tid];
+        const stateKey = (p.state || "").replace(/\s+/g, " ").trim();
+        if (!stateKey || stateKey === "Unknown State") continue;
+        if (!stateGroups[stateKey]) stateGroups[stateKey] = [];
+        const ts = CONFIG.TILE_SIZE_METERS || 6.096;
+        const bounds = Geo.tileBounds(Number(p.tx), Number(p.ty), ts);
+        stateGroups[stateKey].push(bounds);
       }
 
+      const territoryFeatures = [];
+      for (const stateKey in stateGroups) {
+        const tiles = stateGroups[stateKey];
+        let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+        for (const b of tiles) {
+          minLat = Math.min(minLat, b[0][0], b[3][0]);
+          maxLat = Math.max(maxLat, b[1][0], b[2][0]);
+          minLon = Math.min(minLon, b[0][1], b[1][1]);
+          maxLon = Math.max(maxLon, b[2][1], b[3][1]);
+        }
+        // Pad the bounding box for visibility at low zoom
+        const padLat = (maxLat - minLat) * 0.3 + 0.05;
+        const padLon = (maxLon - minLon) * 0.3 + 0.05;
+        minLat -= padLat; maxLat += padLat;
+        minLon -= padLon; maxLon += padLon;
+
+        territoryFeatures.push({
+          type: "Feature",
+          properties: { state: stateKey, count: tiles.length },
+          geometry: {
+            type: "Polygon",
+            coordinates: [[
+              [minLon, minLat], [maxLon, minLat], [maxLon, maxLat], [minLon, maxLat], [minLon, minLat]
+            ]]
+          }
+        });
+      }
+
+      if (territoryFeatures.length > 0 && !map.getSource("territory-overview-source")) {
+        map.addSource("territory-overview-source", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: territoryFeatures }
+        });
+        map.addLayer({
+          id: "territory-overview-fill",
+          type: "fill",
+          source: "territory-overview-source",
+          paint: {
+            "fill-color": "#5a6a7a",
+            "fill-opacity": 0.25,
+          }
+        }, "plots-grass-base");
+        map.addLayer({
+          id: "territory-overview-line",
+          type: "line",
+          source: "territory-overview-source",
+          paint: {
+            "line-color": "#8892a2",
+            "line-width": 1.5,
+            "line-opacity": 0.5,
+          }
+        }, "plots-grass-base");
+      } else if (map.getSource("territory-overview-source")) {
+        map.getSource("territory-overview-source").setData({
+          type: "FeatureCollection", features: territoryFeatures
+        });
+      }
+
+      // Fly to globe view
       map.flyTo({
-        center: [targetLng, targetLat],
-        zoom: 15.6,
+        center: [currentPos.lon, currentPos.lat],
+        zoom: 3,
         pitch: 0,
         bearing: 0,
-        duration: 1600,
+        duration: 2500,
         essential: true
       });
 
-      showToast("🦅 Bird's Eye View", 3500);
+      showToast("🦅 Bird's Eye — Globe View", 3500);
+      showExitBirdsEye();
+    }
 
-      // Show "Exit Bird's Eye" button (teleports back to player)
+    function exitBirdsEye() {
+      if (!isBirdsEye || !map || !currentPos) return;
+      isBirdsEye = false;
+
+      // Remove territory overview layers
+      if (map.getLayer("territory-overview-line")) map.removeLayer("territory-overview-line");
+      if (map.getLayer("territory-overview-fill")) map.removeLayer("territory-overview-fill");
+      if (map.getSource("territory-overview-source")) map.removeSource("territory-overview-source");
+
+      // Restore plot layers
+      ["plots-grass-base", "plots-fill", "plots-line"].forEach(id => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "visible");
+      });
+
+      // Smooth fly back to player
+      map.flyTo({
+        center: [currentPos.lon, currentPos.lat],
+        zoom: 18.5,
+        pitch: 70,
+        bearing: 0,
+        duration: 2000,
+        essential: true
+      });
+
+      hideExitBirdsEye();
+      showToast("📍 Back to your location", 2500);
+    }
+
+    function showExitBirdsEye() {
       let exitBtn = document.getElementById("exit-birds-eye-btn");
       if (!exitBtn) {
         exitBtn = document.createElement("button");
         exitBtn.id = "exit-birds-eye-btn";
         exitBtn.textContent = "✕ Exit Bird's Eye";
         exitBtn.style.cssText = "position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:9998;padding:12px 28px;border-radius:50px;border:none;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#1a1206;font-family:var(--font-body);font-weight:800;font-size:14px;box-shadow:0 4px 20px rgba(212,175,97,0.4);cursor:pointer;";
+        exitBtn.addEventListener("click", exitBirdsEye);
         document.body.appendChild(exitBtn);
       }
       exitBtn.classList.remove("hidden");
+    }
 
-      exitBtn.onclick = () => {
-        if (currentPos && map) {
-          map.jumpTo({
-            center: [currentPos.lon, currentPos.lat],
-            zoom: 18.5,
-            pitch: 70,
-            bearing: 0
-          });
-        }
-        exitBtn.classList.add("hidden");
-        showToast("📍 Back to your location", 2500);
-      };
+    function hideExitBirdsEye() {
+      const exitBtn = document.getElementById("exit-birds-eye-btn");
+      if (exitBtn) exitBtn.classList.add("hidden");
+    }
+
+    el("birds-eye-trigger-btn")?.addEventListener("click", () => {
+      closeModal("player-info-modal");
+      enterBirdsEye();
     });
     // --- Diamond Extractor Dynamic Level Math (2-min base, up to 50 gems) ---
     function getExtractorStats(level = 1) {
@@ -2303,8 +2386,8 @@
       map.setMinPitch(0);
       map.setMaxPitch(70);
 
-      // 2. Restore normal 100-yard neighborhood zoom limits
-      map.setMinZoom(18.2);
+      // 2. Restore normal zoom limits
+      map.setMinZoom(2);
       map.setMaxZoom(20.0);
 
       // 3. Smoothly tilt back to 58° 3D perspective
