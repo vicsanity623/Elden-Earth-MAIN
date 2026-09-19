@@ -215,9 +215,31 @@ const ServerAntiCheat = (() => {
     }
   }
 
+  async function claimReferralBonuses() {
+    if (!functions) return { claimed: false, reason: "not_ready" };
+    try {
+      const fn = functions.httpsCallable("claimReferralBonuses");
+      return await fn();
+    } catch (e) {
+      console.warn("[AntiCheat] claimReferralBonuses error:", e);
+      return { claimed: false, reason: e.message };
+    }
+  }
+
+  async function claimReferralRoyalties() {
+    if (!functions) return { totalRoyalty: 0, referralCount: 0 };
+    try {
+      const fn = functions.httpsCallable("claimReferralRoyalties");
+      return await fn();
+    } catch (e) {
+      console.warn("[AntiCheat] claimReferralRoyalties error:", e);
+      return { totalRoyalty: 0, referralCount: 0 };
+    }
+  }
+
   function isReady() {
     return functions !== null;
   }
 
-  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, pickupPlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, isReady };
+  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, pickupPlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, claimReferralBonuses, claimReferralRoyalties, isReady };
 })();

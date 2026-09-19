@@ -14,6 +14,12 @@ const Referrals = (() => {
     else console.log("[Referrals]", msg);
   }
 
+  function formatRoyalty(val) {
+    if (val >= 1) return val.toFixed(2);
+    if (val >= 0.01) return val.toFixed(3);
+    return val.toFixed(4);
+  }
+
   // ======================== CODE GENERATION ========================
   function generateCode(playerName) {
     const base = (playerName || "traveler").replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
@@ -107,44 +113,26 @@ const Referrals = (() => {
   }
 
   // ======================== CLAIM REFERRAL BONUSES ========================
-  // Called by the RECIPIENT (referrer) on load to claim pending bonuses
+  // Called by the RECIPIENT (referrer) on load to claim pending bonuses via server
   async function claimReferralBonuses() {
     const id = myId();
-    const d = db();
-    if (!id || !d) return;
+    if (!id) return;
 
-    try {
-      const snap = await d.collection("referral_bonuses")
-        .where("toId", "==", id)
-        .where("claimed", "==", false)
-        .get();
-
-      if (snap.empty) return;
-
-      let totalClaimed = 0;
-      const batch = d.batch();
-
-      for (const doc of snap.docs) {
-        const data = doc.data();
-        totalClaimed += data.amount || 0;
-        batch.update(doc.ref, { claimed: true });
-      }
-
-      await batch.commit();
-
-      if (totalClaimed > 0) {
-        const state = Store.get();
-        if (state) {
-          // Economy balance lives on state.eb, not state.player.eb — that field is never read/displayed.
-          state.eb = (Number(state.eb) || 0) + totalClaimed;
-          state.lifetimeRent = (Number(state.lifetimeRent) || 0) + totalClaimed;
-          Store.save(true);
-          if (typeof updateTopbar === "function") updateTopbar();
+    if (typeof ServerAntiCheat !== "undefined" && ServerAntiCheat.isReady()) {
+      try {
+        const result = await ServerAntiCheat.claimReferralBonuses();
+        if (result && result.claimed && result.totalClaimed > 0) {
+          const state = Store.get();
+          if (state) {
+            state.eb = Number(result.nextEb) || (Number(state.eb) || 0) + result.totalClaimed;
+            Store.save(true);
+            if (typeof updateTopbar === "function") updateTopbar();
+          }
+          toast(`🎁 Claimed ${result.totalClaimed} EB referral bonus${result.totalClaimed > 1 ? 'es' : ''}!`, 4000);
         }
-        toast(`🎁 Claimed ${totalClaimed} EB referral bonus${totalClaimed > 1 ? 'es' : ''}!`, 4000);
+      } catch (e) {
+        console.warn("[Referrals] Claim bonuses error:", e);
       }
-    } catch (e) {
-      console.warn("[Referrals] Claim bonuses error:", e);
     }
   }
 
@@ -229,8 +217,17 @@ const Referrals = (() => {
       console.warn("[Referrals] Could not fetch referral bonuses:", e);
     }
 
+    // Fetch royalty stats from cloud
+    let royaltyTotal = 0;
+    try {
+      if (typeof ServerAntiCheat !== "undefined" && ServerAntiCheat.isReady()) {
+        const royaltyResult = await ServerAntiCheat.claimReferralRoyalties();
+        royaltyTotal = Number(royaltyResult?.totalRoyalty) || 0;
+      }
+    } catch (e) {}
+
     let statsHtml = "";
-    if (totalReferrals > 0 || bonusRows.length > 0) {
+    if (totalReferrals > 0 || bonusRows.length > 0 || royaltyTotal > 0) {
       statsHtml = `
         <div class="referral-stats-card">
           <div class="referral-stat">
@@ -244,6 +241,10 @@ const Referrals = (() => {
           <div class="referral-stat">
             <span class="referral-stat-val">${pendingBonus} EB</span>
             <span class="referral-stat-label">Pending</span>
+          </div>
+          <div class="referral-stat referral-stat-royalty">
+            <span class="referral-stat-val">${formatRoyalty(royaltyTotal)} EB</span>
+            <span class="referral-stat-label">Royalties</span>
           </div>
         </div>`;
 
@@ -283,7 +284,7 @@ const Referrals = (() => {
       <div class="referrals-placeholder">
         <div class="referrals-placeholder-icon">🎁</div>
         <h3>Referral Program</h3>
-        <p>Share your code. Earn +${REFERRAL_BONUS_EB} EB per referral!</p>
+        <p>Share your code. Earn +${REFERRAL_BONUS_EB} EB per referral + 1% of every land plot they buy!</p>
       </div>
       ${codeHtml}
       ${referredSection}

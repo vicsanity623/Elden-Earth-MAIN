@@ -1833,16 +1833,22 @@ html,body{
 }
 .referral-stats-card {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 12px;
 }
 .referral-stat {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px);
+  min-width: 80px;
   background: var(--panel-2);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
+}
+.referral-stat-royalty {
+  border-color: var(--gold-lo);
+  background: rgba(255, 215, 0, 0.08);
 }
 .referral-stat-val {
   display: block;
