@@ -262,7 +262,7 @@
     CONFIG.PLOT_RARITIES.forEach(rarity => {
       const pct = total > 0 ? ((counts[rarity.key] / total) * 100).toFixed(1) : "0.0";
       if (el(`weight-${rarity.key}`)) el(`weight-${rarity.key}`).textContent = pct;
-      if (el(`rate-${rarity.key}`)) el(`rate-${rarity.key}`).textContent = formatRate(rarity.rate);
+      if (el(`rate-${rarity.key}`)) el(`rate-${rarity.key}`).textContent = formatRate(rarity.rate * (counts[rarity.key] || 0));
     });
   }
   
