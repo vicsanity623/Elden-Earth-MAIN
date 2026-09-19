@@ -241,5 +241,16 @@ const ServerAntiCheat = (() => {
     return functions !== null;
   }
 
-  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, pickupPlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, claimReferralBonuses, claimReferralRoyalties, isReady };
+  async function fixAllPlotData(targetUid) {
+    if (!functions) return { fixed: 0, reason: "functions_not_initialized" };
+    try {
+      const fn = functions.httpsCallable("fixAllPlotData");
+      return (await fn({ targetUid })).data;
+    } catch (e) {
+      console.warn("[ServerAntiCheat] fixAllPlotData failed:", e.message);
+      return { fixed: 0, reason: e.message };
+    }
+  }
+
+  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, pickupPlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, claimReferralBonuses, claimReferralRoyalties, isReady, fixAllPlotData };
 })();

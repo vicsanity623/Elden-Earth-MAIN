@@ -86,7 +86,7 @@ const Leaderboard = (() => {
       return "⛔ Restricted Territory";
     }
 
-    return rawCountry ? `${rawCountry} 🌐` : "International Realm 🌐";
+    return "";
   }
 
   // Universal State Normalizer
@@ -108,7 +108,7 @@ const Leaderboard = (() => {
     if (s.includes("british columbia") || ci.includes("bc") && ci.includes("🇨🇦")) return "British Columbia 🇨🇦";
     if (s.includes("puerto rico") || ci.includes(", pr") || s.includes("🇵🇷")) return "Puerto Rico 🇵🇷";
 
-    return rawState || cityStr || "Local Territory";
+    return rawState || "";
   }
 
   function calculatePreciseLifetimeRent(playerId, playerDoc, allPlots) {
@@ -204,7 +204,7 @@ const Leaderboard = (() => {
       uniquePlots[oid].add(plotKey);
 
       // Clean, un-defaulted City resolution
-      let rawCity = p.city || "Unknown City";
+      let rawCity = p.city || "";
       if (rawCity.includes("Phoenix, AR")) rawCity = "Phoenix, AZ 🇺🇸";
       if (rawCity.includes("Nanaimo, British Columbia")) rawCity = "Nanaimo, BC 🇨🇦";
 
@@ -212,26 +212,32 @@ const Leaderboard = (() => {
       const stateName = normalizeState(p.state, rawCity);
       const country = normalizeCountry(p.country, rawCity);
 
-      playerStats[oid].cities[rawCity] = (playerStats[oid].cities[rawCity] || 0) + 1;
-      playerStats[oid].states[stateName] = (playerStats[oid].states[stateName] || 0) + 1;
-      playerStats[oid].countries[country] = (playerStats[oid].countries[country] || 0) + 1;
+      // Skip invalid/unknown territories for mayorship/governor/president calculations
+      const isUnknownCity = !rawCity || rawCity === "Unknown City" || rawCity.match(/^\d+[\.\d]*[NS]\s/);
+      const isUnknownState = !stateName || stateName === "Unknown State";
+      const isUnknownCountry = !country || country === "Unknown" || country.includes("International Realm") || country.includes("Unknown");
 
-      // Clean lowercase keys (no flag/casing) — used for territory-tab filter matching only.
-      const cityKey = cleanTerritoryKey(rawCity);
-      const stateKey = cleanTerritoryKey(stateName);
-      const countryKey = cleanTerritoryKey(country);
-      playerStats[oid].citiesClean[cityKey] = (playerStats[oid].citiesClean[cityKey] || 0) + 1;
-      playerStats[oid].statesClean[stateKey] = (playerStats[oid].statesClean[stateKey] || 0) + 1;
-      playerStats[oid].countriesClean[countryKey] = (playerStats[oid].countriesClean[countryKey] || 0) + 1;
-
-      cityCounts[rawCity] = cityCounts[rawCity] || {};
-      cityCounts[rawCity][oid] = (cityCounts[rawCity][oid] || 0) + 1;
-
-      stateCounts[stateName] = stateCounts[stateName] || {};
-      stateCounts[stateName][oid] = (stateCounts[stateName][oid] || 0) + 1;
-
-      countryCounts[country] = countryCounts[country] || {};
-      countryCounts[country][oid] = (countryCounts[country][oid] || 0) + 1;
+      if (!isUnknownCity) {
+        playerStats[oid].cities[rawCity] = (playerStats[oid].cities[rawCity] || 0) + 1;
+        const cityKey = cleanTerritoryKey(rawCity);
+        playerStats[oid].citiesClean[cityKey] = (playerStats[oid].citiesClean[cityKey] || 0) + 1;
+        cityCounts[rawCity] = cityCounts[rawCity] || {};
+        cityCounts[rawCity][oid] = (cityCounts[rawCity][oid] || 0) + 1;
+      }
+      if (!isUnknownState) {
+        playerStats[oid].states[stateName] = (playerStats[oid].states[stateName] || 0) + 1;
+        const stateKey = cleanTerritoryKey(stateName);
+        playerStats[oid].statesClean[stateKey] = (playerStats[oid].statesClean[stateKey] || 0) + 1;
+        stateCounts[stateName] = stateCounts[stateName] || {};
+        stateCounts[stateName][oid] = (stateCounts[stateName][oid] || 0) + 1;
+      }
+      if (!isUnknownCountry) {
+        playerStats[oid].countries[country] = (playerStats[oid].countries[country] || 0) + 1;
+        const countryKey = cleanTerritoryKey(country);
+        playerStats[oid].countriesClean[countryKey] = (playerStats[oid].countriesClean[countryKey] || 0) + 1;
+        countryCounts[country] = countryCounts[country] || {};
+        countryCounts[country][oid] = (countryCounts[country][oid] || 0) + 1;
+      }
     }
 
     if (state.player?.id && !playerStats[state.player.id]) {
@@ -534,9 +540,12 @@ const Leaderboard = (() => {
     const state = Store.get();
     const data = await fetchRankings(false);
 
-    const cleanCity = territory.city || "Unknown City";
+    const cleanCity = territory.city || "";
     const cleanState = normalizeState(territory.state, cleanCity);
     const cleanCountry = normalizeCountry(territory.country, cleanCity);
+
+    // Skip dividend awards for plots with unknown/incomplete territory data
+    if (!cleanCity || !cleanCountry) return;
 
     const mayor = data.mayorsMap?.[cleanCity];
     const governor = data.governorsMap?.[cleanState];

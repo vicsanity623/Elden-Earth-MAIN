@@ -1300,7 +1300,6 @@
     // High-Performance Ticker: Calculates exact delta & saves locally without network thrashing
     let lastTickTime = Date.now();
     let lastIncomeCloudSave = Date.now();
-    let lastCrossTabBroadcast = Date.now();
     setInterval(() => {
       if (document.hidden) return; // Sleep income ticker calculations when app is minimized
       if (typeof Store !== "undefined" && !Store.isSessionActive()) return; // Session paused, stop earning
@@ -1316,6 +1315,7 @@
       const deltaSec = Math.min(60, rawDelta); // Cap tick at 60s max
       lastTickTime = now;
 
+      // Always re-read state from Store (broadcast handler may have updated it)
       const state = Store.get();
       if (state.cash === undefined) state.cash = 0;
       if (state.lifetimeRent === undefined) state.lifetimeRent = state.cash;
@@ -1325,18 +1325,12 @@
       state.lifetimeRent += deltaEarned;
       state.lastTick = now;
 
-      // Periodic cloud save every 30 seconds from income loop
+      // Periodic cloud save every 30 seconds from income loop (also refreshes session lock heartbeat)
       if (now - lastIncomeCloudSave >= 30000) {
         lastIncomeCloudSave = now;
+        // Refresh the session lock heartbeat so other windows know we're alive
+        if (state.sessionLock) state.sessionLock.lockedAt = now;
         Store.save(true);
-      }
-
-      // Cross-tab balance sync every 5 seconds (lightweight — just saves to localStorage + broadcasts)
-      if (now - lastCrossTabBroadcast >= 5000) {
-        lastCrossTabBroadcast = now;
-        state.lastSavedAt = Date.now();
-        localStorage.setItem("eldenEarth.save.v1", JSON.stringify(state));
-        Store.broadcastState();
       }
 
       updateTopbar();

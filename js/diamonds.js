@@ -290,9 +290,18 @@ const Diamonds = (() => {
     const curCount = Object.keys(state.liveDiamonds).length;
     if (curCount >= targetCount) return;
 
+    // Cap close diamonds (within 100m) to max 3 — don't request more if already have 3+
+    let closeCount = 0;
+    for (const did in state.liveDiamonds) {
+      const d = state.liveDiamonds[did];
+      if (Geo.haversine(playerPos.lat, playerPos.lon, d.lat, d.lon) <= 100) closeCount++;
+    }
+    const wantClose = Math.max(0, 3 - closeCount);
+    const requestCount = Math.min(6, targetCount - curCount); // max 6 per batch, not 12
+
     if (spawnInFlight || typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) return;
     spawnInFlight = true;
-    const result = await ServerAntiCheat.spawnDiamonds(playerPos.lat, playerPos.lon, Math.min(12, targetCount - curCount));
+    const result = await ServerAntiCheat.spawnDiamonds(playerPos.lat, playerPos.lon, requestCount);
     spawnInFlight = false;
     if (!result.spawned) return;
     result.diamonds.forEach((diamond) => { state.liveDiamonds[diamond.id] = diamond; });
@@ -327,9 +336,9 @@ const Diamonds = (() => {
       }
     }
 
-    const TARGET_NEARBY = 18;
+    const TARGET_NEARBY = 6;
     if (nearbyCount < TARGET_NEARBY) {
-      const toSpawn = Math.min(12, TARGET_NEARBY - nearbyCount, MAX_ACTIVE - allDiamonds);
+      const toSpawn = Math.min(6, TARGET_NEARBY - nearbyCount, MAX_ACTIVE - allDiamonds);
       if (toSpawn > 0) await seedHorizonBatch(toSpawn);
     }
   }
@@ -365,9 +374,9 @@ const Diamonds = (() => {
       }
     }
 
-    // 3. Immediately seed 24 diamonds if world is sparse!
-    if (nearbyCount < 18) {
-      seedHorizonBatch(24);
+    // 3. Seed diamonds if world is sparse
+    if (nearbyCount < 6) {
+      seedHorizonBatch(6);
     }
 
     const storedPosition = Store.get().lastDiamondPlayerPosition;

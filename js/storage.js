@@ -5,171 +5,12 @@ const Store = (() => {
   const KEY = "eldenEarth.save.v1";
   let db = null;
 
-  // Smart Session Lock: Persists across page reloads, but changes across different tabs/devices!
-  let localSessionId = (typeof sessionStorage !== "undefined") ? sessionStorage.getItem("elden_sess_token") : null;
-  if (!localSessionId) {
-    localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    try { sessionStorage.setItem("elden_sess_token", localSessionId); } catch (e) {}
-  }
   let isSessionPaused = false;
   let cloudSyncComplete = false;
 
-  // ===== CROSS-TAB SYNC: BroadcastChannel for real-time state replication =====
-  const TAB_ID = "tab_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-  let activeTabs = {};      // tabId -> last heartbeat timestamp
-  let tabChannel = null;
-  let crossTabEnabled = false;
-  try {
-    tabChannel = new BroadcastChannel("elden_earth_sync");
-    crossTabEnabled = true;
-
-    // Register self on open
-    tabChannel.postMessage({ type: "tab_heartbeat", tabId: TAB_ID, ts: Date.now() });
-
-    // Heartbeat interval: announce presence every 3s
-    setInterval(() => {
-      if (!document.hidden) {
-        tabChannel.postMessage({ type: "tab_heartbeat", tabId: TAB_ID, ts: Date.now() });
-      }
-    }, 3000);
-
-    // Clean stale tabs (>8s without heartbeat)
-    setInterval(() => {
-      const now = Date.now();
-      for (const tid in activeTabs) {
-        if (now - activeTabs[tid] > 8000) delete activeTabs[tid];
-      }
-    }, 5000);
-
-    tabChannel.onmessage = (e) => {
-      if (!e.data || !e.data.type) return;
-
-      // --- Tab registration ---
-      if (e.data.type === "tab_heartbeat") {
-        activeTabs[e.data.tabId] = e.data.ts;
-        // Respond so the sender knows about us
-        if (e.data.tabId !== TAB_ID) {
-          tabChannel.postMessage({ type: "tab_heartbeat", tabId: TAB_ID, ts: Date.now() });
-        }
-        // Enforce max 2 tabs: if we are the oldest, warn
-        const tabIds = Object.keys(activeTabs).sort((a, b) => activeTabs[a] - activeTabs[b]);
-        if (tabIds.length > 2 && tabIds[0] === TAB_ID) {
-          if (!window._tabLimitWarned) {
-            window._tabLimitWarned = true;
-            if (typeof showToast === "function") {
-              showToast("⚠️ Max 2 tabs allowed. Close one tab or the oldest tab may stop earning.", 5000);
-            }
-            // Pause earning on oldest tab
-            isSessionPaused = true;
-          }
-        }
-        return;
-      }
-
-      if (e.data.type === "tab_goodbye") {
-        delete activeTabs[e.data.tabId];
-        // Resume if we were paused due to tab limit
-        if (isSessionPaused && Object.keys(activeTabs).length <= 1) {
-          isSessionPaused = false;
-          window._tabLimitWarned = false;
-          if (typeof showToast === "function") {
-            showToast("✅ Tab limit cleared — earning resumed.", 3000);
-          }
-        }
-        return;
-      }
-
-      // --- STATE SYNC: another tab pushed its state ---
-      if (e.data.type === "state_updated" && e.data.state) {
-        const incoming = e.data.state;
-        // Only apply if incoming is newer
-        const incomingTs = Number(incoming.lastSavedAt) || 0;
-        const localTs = Number(state?.lastSavedAt) || 0;
-        if (incomingTs <= localTs) return;
-
-        // Merge key fields from the incoming state
-        const SYNC_FIELDS = ["eb", "diamonds", "lifetimeRent", "totalDividends", "plots",
-          "plotBag", "calendar", "dailyQuests", "boostExpiry", "boostMultiplier",
-          "liveDiamonds", "collectedDiamondIds", "lastDiamondSpawn",
-          "extractor", "referralRoyalties", "referralRoyaltyTotal", "referralCount",
-          "lastWeeklyPoolClaim", "initialEBClaimed", "communityGiftClaimedV1"];
-        for (const key of SYNC_FIELDS) {
-          if (incoming[key] !== undefined) {
-            state[key] = incoming[key];
-          }
-        }
-        // Cash needs special handling: take the HIGHER value (income loop runs in both tabs)
-        if (incoming.cash !== undefined) {
-          state.cash = Math.max(Number(state.cash) || 0, Number(incoming.cash) || 0);
-        }
-        if (incoming.player) {
-          state.player = Object.assign(state.player || {}, incoming.player);
-        }
-        state.lastSavedAt = incomingTs;
-        localStorage.setItem(KEY, JSON.stringify(state));
-
-        // Refresh all UI
-        if (typeof updateTopbar === "function") updateTopbar();
-        if (typeof window.renderPlots === "function") window.renderPlots();
-        if (typeof Diamonds !== "undefined" && Diamonds.renderAll) Diamonds.renderAll();
-        return;
-      }
-
-      // --- ACTION SYNC: another tab performed a discrete action ---
-      if (e.data.type === "action" && e.data.action) {
-        // Re-sync from localStorage (which was updated by the acting tab's save)
-        try {
-          const fresh = JSON.parse(localStorage.getItem(KEY));
-          if (fresh && (Number(fresh.lastSavedAt) || 0) > (Number(state?.lastSavedAt) || 0)) {
-            state = fresh;
-            if (typeof updateTopbar === "function") updateTopbar();
-          }
-        } catch (err) {}
-        return;
-      }
-    };
-
-    // Announce tab close
-    window.addEventListener("pagehide", () => {
-      try { tabChannel.postMessage({ type: "tab_goodbye", tabId: TAB_ID }); } catch (e) {}
-    });
-  } catch (e) {
-    console.warn("[CrossTab] BroadcastChannel unavailable:", e);
-  }
-
-  /** Broadcast state to all other tabs (called on save) */
-  function broadcastState() {
-    if (!crossTabEnabled || !tabChannel) return;
-    try {
-      tabChannel.postMessage({
-        type: "state_updated",
-        state: {
-          eb: state.eb, cash: state.cash, diamonds: state.diamonds,
-          lifetimeRent: state.lifetimeRent, totalDividends: state.totalDividends,
-          plots: state.plots, plotBag: state.plotBag, calendar: state.calendar,
-          dailyQuests: state.dailyQuests, boostExpiry: state.boostExpiry,
-          boostMultiplier: state.boostMultiplier, liveDiamonds: state.liveDiamonds,
-          collectedDiamondIds: state.collectedDiamondIds,
-          lastDiamondSpawn: state.lastDiamondSpawn, extractor: state.extractor,
-          referralRoyalties: state.referralRoyalties,
-          referralRoyaltyTotal: state.referralRoyaltyTotal,
-          referralCount: state.referralCount,
-          lastWeeklyPoolClaim: state.lastWeeklyPoolClaim,
-          initialEBClaimed: state.initialEBClaimed,
-          communityGiftClaimedV1: state.communityGiftClaimedV1,
-          player: state.player, lastSavedAt: state.lastSavedAt || Date.now(),
-        }
-      });
-    } catch (e) {}
-  }
-
-  /** Broadcast a discrete action to other tabs (triggers re-sync) */
-  function broadcastAction(actionName) {
-    if (!crossTabEnabled || !tabChannel) return;
-    try {
-      tabChannel.postMessage({ type: "action", action: actionName, ts: Date.now() });
-    } catch (e) {}
-  }
+  // ===== SESSION LOCK: ONE session at a time, enforced via Firestore =====
+  let localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  let _sessionActive = false;
 
   function getDb() {
     if (db) return db;
@@ -404,8 +245,6 @@ const Store = (() => {
       state.lastSavedAt = Date.now(); // Timestamp for conflict resolution
       localStorage.setItem(KEY, JSON.stringify(state));
       syncToCloudDebounced(immediateCloud);
-      // Cross-tab sync: broadcast latest state to all other open tabs
-      broadcastState();
     } catch (e) {
       console.warn("Could not save game.", e);
     }
@@ -534,18 +373,41 @@ const Store = (() => {
       localStorage.setItem(KEY, JSON.stringify(state));
     }
 
-    // SESSION LOCK: Always take over — no more blocking
+    // SESSION LOCK: Check if another session is actively running
     try {
       const saveDoc = await firestore.collection("saves").doc(playerId).get();
       if (saveDoc.exists) {
         const saveData = saveDoc.data();
         const existingLock = saveData.sessionLock;
+        const lockAge = existingLock ? (Date.now() - Number(existingLock.lockedAt || 0)) : Infinity;
+        const LOCK_STALE_MS = 30000; // Lock considered stale after 30s without heartbeat
 
-        if (existingLock && existingLock.sessionId !== localSessionId) {
-          console.log(`[Session] Taking over from previous session.`);
+        if (existingLock && existingLock.sessionId !== localSessionId && lockAge < LOCK_STALE_MS) {
+          // Another session is active and its lock is fresh — BLOCK this session
+          console.warn(`[Session] BLOCKED — account already active in another window/tab (lock age: ${Math.round(lockAge / 1000)}s)`);
+          isSessionPaused = true;
+          cloudSyncComplete = true;
+
+          // Show the session conflict modal
+          const conflictModal = document.getElementById("session-conflict-modal");
+          if (conflictModal) conflictModal.classList.remove("hidden");
+
+          // Wire up the Take Over button
+          const takeOverBtn = document.getElementById("resume-session-btn");
+          if (takeOverBtn && !takeOverBtn._wired) {
+            takeOverBtn._wired = true;
+            takeOverBtn.addEventListener("click", () => {
+              // Force-takeover: claim the lock and reload
+              state.sessionLock = { sessionId: localSessionId, lockedAt: Date.now() };
+              localStorage.setItem(KEY, JSON.stringify(state));
+              syncSafeStateToCloud().finally(() => window.location.reload());
+            });
+          }
+          return null;
         }
       }
 
+      // No active lock or lock is stale — claim it
       state.sessionLock = { sessionId: localSessionId, lockedAt: Date.now() };
       isSessionPaused = false;
     } catch (lockErr) {
@@ -1047,10 +909,7 @@ let lastConflictCheck = {};
     document.getElementById("session-conflict-modal")?.classList.add("hidden");
 
     // Generate a new session ID and take over the lock
-    if (typeof sessionStorage !== "undefined") {
-      localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      try { sessionStorage.setItem("elden_sess_token", localSessionId); } catch (e) {}
-    }
+    localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
     state.sessionLock = { sessionId: localSessionId, lockedAt: Date.now() };
     syncSafeStateToCloud().finally(() => window.location.reload());
@@ -1075,5 +934,5 @@ let lastConflictCheck = {};
 
   function isCloudSyncComplete() { return cloudSyncComplete; }
 
-  return { load, save, get, reset, totalRate, applyOfflineProgress, syncFromCloud, getDb, isSessionActive, resumeSession, isCloudSyncComplete, syncSafeStateToCloud, broadcastAction, broadcastState };
+  return { load, save, get, reset, totalRate, applyOfflineProgress, syncFromCloud, getDb, isSessionActive, resumeSession, isCloudSyncComplete, syncSafeStateToCloud };
 })();

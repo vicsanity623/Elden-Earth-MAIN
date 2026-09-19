@@ -45,7 +45,7 @@ const Feed = (() => {
       });
       const data = await res.json();
       const addr = data.address || {};
-      const city = addr.city || addr.town || addr.municipality || addr.village || "Phoenix";
+      const city = addr.city || addr.town || addr.municipality || addr.village || "";
       const rawState = addr.state || "";
       const stateCode = US_STATES[rawState] || (rawState.length === 2 ? rawState.toUpperCase() : "");
       const stateStr = stateCode ? `, ${stateCode}` : "";

@@ -213,6 +213,10 @@ const Grid = (() => {
     const centerLat = (corners[0][0] + corners[2][0]) / 2;
     const centerLon = (corners[0][1] + corners[2][1]) / 2;
     const territory = await Geo.getTerritoryInfo(centerLat, centerLon);
+    if (!territory || !territory.city || !territory.country) {
+      if (typeof showToast === "function") showToast("📍 Could not resolve location — try a different area.", 3500);
+      return;
+    }
     const rarity = rarityInfo(rarityKey);
 
     if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
@@ -316,6 +320,12 @@ const Grid = (() => {
     const centerLon = (corners[0][1] + corners[2][1]) / 2;
     const territory = await Geo.getTerritoryInfo(centerLat, centerLon);
 
+    if (!territory || !territory.city || !territory.country) {
+      if (typeof showToast === "function") showToast("📍 Could not resolve location — try a different area.", 3500);
+      onBuyAttempt(false, null);
+      return;
+    }
+
     // 🛡️ SERVER-SIDE PURCHASE VALIDATION — authoritative check before any client write
     if (typeof ServerAntiCheat !== "undefined" && ServerAntiCheat.isReady() && playerCoords) {
       try {
@@ -341,19 +351,17 @@ const Grid = (() => {
           else if (serverResult.reason === "too_far_from_tile") msg = "🚶 You must walk closer to claim this tile.";
           else if (serverResult.reason === "velocity_check_failed") msg = "🚫 Movement anomaly detected.";
           else if (serverResult.reason === "position_not_verified") msg = "📍 Waiting for GPS lock — try again in a moment.";
+          else if (serverResult.reason === "location_not_resolved") msg = "📍 Could not resolve location — try a different area.";
           else if (serverResult.reason) msg = "🛡️ " + serverResult.reason;
           toastFn(msg, 3500);
           onBuyAttempt(false, null);
           return;
         }
-        // Server approved — use server-computed plotData (server-authoritative rarity)
+        // Server approved — use server-computed plotData (server-authoritative rarity + territory)
         const serverPlotData = serverResult.plotData;
         const serverTid = serverResult.tid;
 
-        // Apply territory info to server plot data
-        serverPlotData.city = territory.city;
-        serverPlotData.state = territory.state;
-        serverPlotData.country = territory.country;
+        // Server now resolves territory via Nominatim — do NOT overwrite with client data
 
         // Use server-authoritative EB balance and cooldown timestamp
         if (typeof serverResult.nextEb === "number") state.eb = serverResult.nextEb;

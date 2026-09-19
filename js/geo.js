@@ -133,16 +133,17 @@ const Geo = (() => {
       const data = await res.json();
       const addr = data.address || {};
 
-      // Use actual coordinates as fallback instead of hardcoded Phoenix
-      const latStr = Math.abs(lat).toFixed(2) + (lat >= 0 ? "N" : "S");
-      const lonStr = Math.abs(lon).toFixed(2) + (lon >= 0 ? "E" : "W");
-
-      const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || `${latStr} ${lonStr}`;
+      const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "";
       const rawState = addr.state || "";
       const stateCode = rawState ? (US_STATES[rawState] || (rawState.length === 2 ? rawState.toUpperCase() : rawState)) : "";
-      const country = addr.country || "Unknown";
+      const country = addr.country || "";
       const cc = addr.country_code ? addr.country_code.toUpperCase() : "";
       const flag = cc ? cc.replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397)) : "";
+
+      // Reject if Nominatim couldn't resolve a real city/country
+      if (!city || !country || city.match(/^\d/)) {
+        return null;
+      }
 
       const cityDisplay = stateCode ? `${city}, ${stateCode} ${flag}` : `${city} ${flag}`;
       const stateDisplay = rawState ? `${rawState} ${flag}` : flag;
@@ -163,14 +164,8 @@ const Geo = (() => {
 
       return info;
     } catch (e) {
-      // Use actual coordinates as fallback instead of hardcoded Phoenix
-      const latStr = Math.abs(lat).toFixed(2) + (lat >= 0 ? "N" : "S");
-      const lonStr = Math.abs(lon).toFixed(2) + (lon >= 0 ? "E" : "W");
-      return {
-        city: `${latStr} ${lonStr}`,
-        state: "",
-        country: "Unknown"
-      };
+      // Geocoding failed — return null to block purchase
+      return null;
     }
   }
 
