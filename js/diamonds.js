@@ -220,7 +220,9 @@ const Diamonds = (() => {
         if (!serverResult.allowed) {
           const toastFn = window.showToast || alert;
           if (serverResult.reason === "too_far") {
-            toastFn("🚶 Too far — walk closer to collect.", 3000);
+            toastFn("🚶 Walk a little closer to collect that diamond.", 3000);
+          } else if (serverResult.reason === "position_mismatch") {
+            toastFn("📍 Position updated — try again in a moment.", 3000);
           } else if (serverResult.reason === "already_collected") {
             toastFn("💎 Already collected!", 2500);
           } else if (serverResult.reason === "velocity_check_failed") {

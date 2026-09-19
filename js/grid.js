@@ -50,7 +50,7 @@ const Grid = (() => {
     const now = Date.now();
     const BUY_COOLDOWN_MS = 60000; // 1 Minute Cooldown
     const lastBuy = state.lastLandPurchaseAt || 0;
-    if (now - lastBuy < BUY_COOLDOWN_MS - 3000) {
+    if (now - lastBuy < BUY_COOLDOWN_MS) {
       const remSec = Math.ceil((BUY_COOLDOWN_MS - (now - lastBuy)) / 1000);
       const toast = window.showToast || alert;
       toast(`⏳ Land Registry Cooldown: Please wait ${remSec}s before claiming your next parcel.`, 3000);
@@ -89,12 +89,7 @@ const Grid = (() => {
     // Check if player holds an unplanted Citadel Capsule
     const hasCapsule = state.capsule && state.capsule.awarded && !state.capsule.planted;
 
-    // Allow opening modal if player has 100 EB OR a free capsule to plant!
-    if (state.eb < CONFIG.PLOT_COST_EB && !hasCapsule && !hasBagPlots(state)) {
-      onBuyAttempt(false, null);
-      return;
-    }
-
+    // Always allow opening modal — server validates EB balance authoritatively
     pendingTile = { tx, ty };
     scheduleRender();
     const modal = document.getElementById("buy-modal");
@@ -299,12 +294,23 @@ const Grid = (() => {
         );
         if (!serverResult.allowed) {
           const toastFn = window.showToast || alert;
+          // Sync server's cooldown timestamp to keep client in check
+          if (serverResult.lastLandPurchaseAt) {
+            state.lastLandPurchaseAt = serverResult.lastLandPurchaseAt;
+            Store.save(true);
+          }
+          // Sync server's EB balance if provided
+          if (typeof serverResult.nextEb === "number") {
+            state.eb = serverResult.nextEb;
+            Store.save(true);
+          }
           let msg = "🛡️ Purchase rejected by server.";
-          if (serverResult.reason === "insufficient_eb") msg = "⚠️ Insufficient EB (server verified).";
-          else if (serverResult.reason === "cooldown") msg = "⏳ Purchase cooldown active. Wait a moment.";
+          if (serverResult.reason === "insufficient_eb") msg = "⚠️ Not enough EB — you need 100 EB to claim land.";
+          else if (serverResult.reason === "cooldown") msg = `⏳ Purchase cooldown active. Wait ${Math.ceil((serverResult.waitMs || 60000) / 1000)}s.`;
           else if (serverResult.reason === "plot_already_claimed") msg = "⚠️ This tile was just claimed by someone else!";
           else if (serverResult.reason === "too_far_from_tile") msg = "🚶 You must walk closer to claim this tile.";
           else if (serverResult.reason === "velocity_check_failed") msg = "🚫 Movement anomaly detected.";
+          else if (serverResult.reason === "position_not_verified") msg = "📍 Waiting for GPS lock — try again in a moment.";
           else if (serverResult.reason) msg = "🛡️ " + serverResult.reason;
           toastFn(msg, 3500);
           onBuyAttempt(false, null);
