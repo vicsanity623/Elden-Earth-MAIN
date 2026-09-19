@@ -9,7 +9,15 @@ const Store = (() => {
   let cloudSyncComplete = false;
 
   // ===== SESSION LOCK: ONE session at a time, enforced via Firestore =====
-  let localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  // sessionStorage survives refreshes in the same browser tab/window but is
+  // isolated from other tabs/windows, which preserves single-session locking.
+  const SESSION_ID_KEY = "eldenEarth.sessionId";
+  let localSessionId = null;
+  try { localSessionId = sessionStorage.getItem(SESSION_ID_KEY); } catch (e) {}
+  if (!localSessionId) {
+    localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { sessionStorage.setItem(SESSION_ID_KEY, localSessionId); } catch (e) {}
+  }
   let _sessionActive = false;
 
   function getDb() {
@@ -418,8 +426,9 @@ const Store = (() => {
       const doc = await firestore.collection("saves").doc(playerId).get();
       if (doc.exists) {
         const cloudData = doc.data();
-        const currentName = state?.player?.name;
-        const currentAvatar = state?.player?.avatar;
+        const localPlayer = Object.assign({}, defaultState().player, state?.player || {});
+        const currentName = localPlayer.name;
+        const currentAvatar = localPlayer.avatar;
 
         // A stale cloud save is just as dangerous as a stale local save. Replace
         // it with a fresh account state before any merge can resurrect old data.
@@ -535,7 +544,20 @@ const Store = (() => {
           state.calendar = mergedCalendar;
           state.dailyQuests = mergedQuests;
           if (cloudData.player) {
-            state.player = Object.assign(defaultState().player, cloudData.player);
+            // Cloud is authoritative, but preserve custom local fields when an
+            // older cloud save does not contain them yet.
+            state.player = Object.assign({}, defaultState().player, localPlayer, cloudData.player);
+            if ((!cloudData.player.name || cloudData.player.name === "Traveler") && localPlayer.name && localPlayer.name !== "Traveler") {
+              state.player.name = localPlayer.name;
+            }
+            if ((!cloudData.player.avatar || cloudData.player.avatar === "🙂") && localPlayer.avatar && localPlayer.avatar !== "🙂") {
+              state.player.avatar = localPlayer.avatar;
+            }
+            if ((!cloudData.player.model3d || cloudData.player.model3d === "robot") && localPlayer.model3d && localPlayer.model3d !== "robot") {
+              state.player.model3d = localPlayer.model3d;
+            }
+          } else {
+            state.player = localPlayer;
           }
 
           if (currentName && currentName !== "Traveler" && (!state.player.name || state.player.name === "Traveler")) {
@@ -908,9 +930,8 @@ let lastConflictCheck = {};
     isSessionPaused = false;
     document.getElementById("session-conflict-modal")?.classList.add("hidden");
 
-    // Generate a new session ID and take over the lock
-    localSessionId = "sess_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-
+    // Keep this tab's persisted session ID so the reload is not treated as a
+    // brand-new competing session.
     state.sessionLock = { sessionId: localSessionId, lockedAt: Date.now() };
     syncSafeStateToCloud().finally(() => window.location.reload());
   }

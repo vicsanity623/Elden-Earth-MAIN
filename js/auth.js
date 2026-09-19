@@ -295,13 +295,8 @@ const Auth = (() => {
             if (s && s.player) {
               s.player.id = user.uid;
 
-              // Always set Google info on fresh login (Firestore may have stale "Traveler")
-              if (user.displayName) {
-                s.player.name = user.displayName;
-              }
-              if (user.photoURL) {
-                s.player.avatar = "img:" + user.photoURL;
-              }
+              // Do not overwrite the saved custom identity before cloud sync.
+              // The cloud player record is authoritative for name/avatar/model3d.
 
               await Store.syncFromCloud(user.uid);
 
