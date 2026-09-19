@@ -1300,6 +1300,7 @@
     // High-Performance Ticker: Calculates exact delta & saves locally without network thrashing
     let lastTickTime = Date.now();
     let lastIncomeCloudSave = Date.now();
+    let lastCrossTabBroadcast = Date.now();
     setInterval(() => {
       if (document.hidden) return; // Sleep income ticker calculations when app is minimized
       if (typeof Store !== "undefined" && !Store.isSessionActive()) return; // Session paused, stop earning
@@ -1329,7 +1330,15 @@
         lastIncomeCloudSave = now;
         Store.save(true);
       }
-      
+
+      // Cross-tab balance sync every 5 seconds (lightweight — just saves to localStorage + broadcasts)
+      if (now - lastCrossTabBroadcast >= 5000) {
+        lastCrossTabBroadcast = now;
+        state.lastSavedAt = Date.now();
+        localStorage.setItem("eldenEarth.save.v1", JSON.stringify(state));
+        Store.broadcastState();
+      }
+
       updateTopbar();
     }, 1000);
   }
