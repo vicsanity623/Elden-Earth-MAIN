@@ -325,7 +325,7 @@ const Store = (() => {
   // Smart 30-Second Cloud Save Throttle (Cuts Firestore writes by ~90%!)
   let cloudSyncTimeout = null;
   let lastCloudSyncTime = 0;
-  const CLOUD_SYNC_THROTTLE_MS = 10000; // 10-second window
+  const CLOUD_SYNC_THROTTLE_MS = 20000; // 20-second window
 
   function syncToCloudDebounced(immediateCloud = false) {
     const now = Date.now();

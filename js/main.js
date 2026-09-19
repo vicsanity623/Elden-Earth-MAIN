@@ -1291,12 +1291,10 @@
     if (pName.includes("cwood") && !state.communityGiftClaimedV1) {
       state.communityGiftClaimedV1 = true;
       state.eb = (Number(state.eb) || 0) + 500;
-      Store.save(true); // Persist immediately to Google Cloud
+      Store.save(true);
       setTimeout(() => {
         showToast("🎁 Community MVP Gift! +500 EB credited for day-one feedback & testing!", 6000);
       }, 2000);
-    } else if (earned > 0.000000000000001) {
-      showToast(`Welcome back — earned $${earned.toFixed(8)} while away.`);
     }
 
     updateTopbar();
@@ -1334,10 +1332,9 @@
       state.lifetimeRent += deltaEarned;
       state.lastTick = now;
 
-      // Periodic cloud save every 10 seconds from income loop (also refreshes session lock heartbeat)
-      if (now - lastIncomeCloudSave >= 10000) {
+      // Periodic cloud save every 20 seconds from income loop (also refreshes session lock heartbeat)
+      if (now - lastIncomeCloudSave >= 20000) {
         lastIncomeCloudSave = now;
-        // Refresh the session lock heartbeat so other windows know we're alive
         if (state.sessionLock) state.sessionLock.lockedAt = now;
         Store.save(true);
       }
