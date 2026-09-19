@@ -253,9 +253,11 @@
     if (el("count-epic")) el("count-epic").textContent = counts.epic;
     if (el("count-legendary")) el("count-legendary").textContent = counts.legendary;
 
+    const total = counts.common + counts.rare + counts.epic + counts.legendary;
     CONFIG.PLOT_RARITIES.forEach(rarity => {
-      if (el(`weight-${rarity.key}`)) el(`weight-${rarity.key}`).textContent = rarity.weight;
-      if (el(`rate-${rarity.key}`)) el(`rate-${rarity.key}`).textContent = rarity.rate.toFixed(10);
+      const pct = total > 0 ? ((counts[rarity.key] / total) * 100).toFixed(1) : "0.0";
+      if (el(`weight-${rarity.key}`)) el(`weight-${rarity.key}`).textContent = pct;
+      if (el(`rate-${rarity.key}`)) el(`rate-${rarity.key}`).textContent = rarity.rate;
     });
   }
   
