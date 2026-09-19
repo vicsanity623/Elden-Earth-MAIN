@@ -126,14 +126,22 @@ const Leaderboard = (() => {
     let totalRent = 0;
     for (const tid in playerPlots) {
       const plot = playerPlots[tid];
-      const claimedTime = Number(plot.claimedAt || playerDoc.createdAt || now);
+      let claimedTime = Number(plot.claimedAt || playerDoc.createdAt || now);
+      // Normalize legacy seconds-unit timestamps to milliseconds
+      if (claimedTime > 0 && claimedTime < 1e11) claimedTime *= 1000;
+      if (!claimedTime || claimedTime > now) claimedTime = now;
       const ageSec = Math.max(0, (now - claimedTime) / 1000);
       const rarityKey = plot.rarity?.key || plot.rarity || "common";
       const rarity = CONFIG.PLOT_RARITIES.find(r => r.key === rarityKey);
       totalRent += ageSec * (rarity ? rarity.rate : CONFIG.PLOT_RARITIES[0].rate);
     }
 
-    return Math.max(totalRent, Number(playerDoc.lifetimeRent || playerDoc.cash || 0));
+    // Players with plots get true passive rent computed from plot ages —
+    // immune to stale/inflated stored values. Players without plots fall
+    // back to their stored lifetime rent (e.g. all plots bagged).
+    const stored = Number(playerDoc.lifetimeRent || playerDoc.cash || 0);
+    if (Object.keys(playerPlots).length > 0) return totalRent;
+    return stored;
   }
 
   function invalidateCache() {
@@ -384,7 +392,6 @@ const Leaderboard = (() => {
     const me = playerArray.find(p => p.id === state.player?.id);
     if (me) {
       me.cash = Math.max(Number(me.cash) || 0, Number(state.cash) || 0);
-      me.lifetimeRent = Math.max(Number(me.lifetimeRent) || 0, Number(state.lifetimeRent) || 0);
     }
 
     cachedData = { players: playerArray, mayorsMap, governorsMap, presidentsMap };

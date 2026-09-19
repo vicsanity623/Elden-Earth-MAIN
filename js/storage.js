@@ -81,7 +81,10 @@ const Store = (() => {
     if (!savedState) return false;
     const epoch = (typeof CONFIG !== "undefined" && CONFIG.REALM_SERVER_EPOCH) || 0;
     if (!epoch) return false;
-    const saveBirth = savedState.createdAt || 0;
+    const saveBirth = Number(savedState.createdAt || 0);
+    // Missing or seconds-unit createdAt is NOT pre-epoch — the server
+    // normalizes those saves instead of resetting them.
+    if (!saveBirth || saveBirth < 1e11) return false;
     return saveBirth < epoch;
   }
 

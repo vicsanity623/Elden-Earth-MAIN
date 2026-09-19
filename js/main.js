@@ -2847,6 +2847,9 @@
     Store.load();
     if (Store.get()?._epochWiped) {
       showToast("✨ A new Realm Era has begun! Your account has been reset for the new season.", 6000);
+      // Consume the flag so the toast never repeats on future logins
+      Store.get()._epochWiped = false;
+      Store.save(false);
     }
     Auth.init(onSignedIn);
     if (typeof ServerAntiCheat !== "undefined") ServerAntiCheat.init();
