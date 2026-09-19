@@ -2267,7 +2267,7 @@
         if (state.extractor.built) {
           extractorHudBtn.classList.remove("hidden");
           if (extractorRedDot) {
-            if (state.extractor.stored > 0) {
+            if (displayStored > 0) {
               extractorRedDot.classList.remove("hidden");
             } else {
               extractorRedDot.classList.add("hidden");
@@ -2351,7 +2351,11 @@
     if (collectExtBtn) {
       collectExtBtn.addEventListener("click", async (e) => {
         const state = Store.get();
-        if (!state.extractor || state.extractor.stored <= 0) return;
+        const now = Date.now();
+        const lvl = Number(state.extractor && state.extractor.level) || 1;
+        const stats = getExtractorStats(lvl);
+        const ready = Math.floor((now - (Number(state.extractor && state.extractor.lastHarvest) || now)) / stats.interval);
+        if (!state.extractor || ready <= 0) return;
 
         if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
           showToast("⚠️ Server connection required to collect diamonds.", 3500);
@@ -2373,6 +2377,8 @@
         }
 
         state.diamonds = result.nextDiamonds;
+        const timeSince = now - (Number(state.extractor.lastHarvest) || now);
+        state.extractor.lastHarvest = now - (timeSince % stats.interval);
         state.extractor.stored = 0;
         Store.save(true);
         updateTopbar();
