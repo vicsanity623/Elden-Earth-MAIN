@@ -50,7 +50,7 @@ const Grid = (() => {
     const now = Date.now();
     const BUY_COOLDOWN_MS = 60000; // 1 Minute Cooldown
     const lastBuy = state.lastLandPurchaseAt || 0;
-    if (now - lastBuy < BUY_COOLDOWN_MS) {
+    if (now - lastBuy < BUY_COOLDOWN_MS - 3000) {
       const remSec = Math.ceil((BUY_COOLDOWN_MS - (now - lastBuy)) / 1000);
       const toast = window.showToast || alert;
       toast(`⏳ Land Registry Cooldown: Please wait ${remSec}s before claiming your next parcel.`, 3000);
@@ -319,9 +319,9 @@ const Grid = (() => {
         serverPlotData.state = territory.state;
         serverPlotData.country = territory.country;
 
-        // Update local state from server result
-        state.eb = (Number(state.eb) || 0) - CONFIG.PLOT_COST_EB;
-        state.lastLandPurchaseAt = Date.now();
+        // Use server-authoritative EB balance and cooldown timestamp
+        if (typeof serverResult.nextEb === "number") state.eb = serverResult.nextEb;
+        if (serverResult.lastLandPurchaseAt) state.lastLandPurchaseAt = serverResult.lastLandPurchaseAt;
         state.plots[serverTid] = serverPlotData;
         globalPlots[serverTid] = serverPlotData;
         Store.save(true);

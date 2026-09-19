@@ -2341,24 +2341,38 @@
     // Collect Diamonds Button with Multi-Gem Particle Shower & Auto-Close
     const collectExtBtn = el("collect-extractor-btn");
     if (collectExtBtn) {
-      collectExtBtn.addEventListener("click", (e) => {
+      collectExtBtn.addEventListener("click", async (e) => {
         const state = Store.get();
         if (!state.extractor || state.extractor.stored <= 0) return;
 
-        const count = state.extractor.stored;
+        if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
+          showToast("⚠️ Server connection required to collect diamonds.", 3500);
+          return;
+        }
+
         const rect = collectExtBtn.getBoundingClientRect();
         const originX = rect.left + rect.width / 2;
         const originY = rect.top + rect.height / 2;
 
-        state.diamonds = (Number(state.diamonds) || 0) + count;
+        const result = await ServerAntiCheat.collectExtractor();
+        if (!result.collected) {
+          if (result.reason === "nothing_stored") {
+            showToast("💎 Nothing to collect yet!", 2500);
+          } else {
+            showToast("⚠️ Collect could not be verified.", 3500);
+          }
+          return;
+        }
+
+        state.diamonds = result.nextDiamonds;
         state.extractor.stored = 0;
         Store.save(true);
         updateTopbar();
-        showToast(`💎 Collected ${count} Diamond${count > 1 ? "s" : ""} from Extractor!`);
+        showToast(`💎 Collected ${result.count} Diamond${result.count > 1 ? "s" : ""} from Extractor!`);
         checkExtractorTick();
 
         // Launch flying diamonds straight into top HUD Diamonds counter!
-        launchFlyingGemStream(originX, originY, count);
+        launchFlyingGemStream(originX, originY, result.count);
 
         // Auto-close Extractor modal after short celebration delay
         setTimeout(() => {

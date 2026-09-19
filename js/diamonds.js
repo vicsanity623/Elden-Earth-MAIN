@@ -312,8 +312,22 @@ const Diamonds = (() => {
     }
 
     const MAX_ACTIVE = CONFIG.DIAMOND_MAX_ACTIVE || 36;
-    if (Object.keys(state.liveDiamonds).length < MAX_ACTIVE) {
-      await seedHorizonBatch(Math.min(MAX_ACTIVE, Object.keys(state.liveDiamonds).length + 2));
+    const allDiamonds = Object.keys(state.liveDiamonds).length;
+    if (allDiamonds >= MAX_ACTIVE) return;
+
+    // Count nearby diamonds specifically (within 1200m)
+    let nearbyCount = 0;
+    for (const did in state.liveDiamonds) {
+      const d = state.liveDiamonds[did];
+      if (Geo.haversine(playerPos.lat, playerPos.lon, d.lat, d.lon) <= 1200) {
+        nearbyCount++;
+      }
+    }
+
+    const TARGET_NEARBY = 18;
+    if (nearbyCount < TARGET_NEARBY) {
+      const toSpawn = Math.min(12, TARGET_NEARBY - nearbyCount, MAX_ACTIVE - allDiamonds);
+      if (toSpawn > 0) await seedHorizonBatch(toSpawn);
     }
   }
 

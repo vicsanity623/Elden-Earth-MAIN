@@ -192,9 +192,20 @@ const ServerAntiCheat = (() => {
     }
   }
 
+  async function collectExtractor() {
+    if (!functions) return { collected: false, reason: "functions_not_initialized" };
+    try {
+      const fn = functions.httpsCallable("collectExtractor");
+      return (await fn()).data;
+    } catch (e) {
+      console.warn("[ServerAntiCheat] Extractor collect failed:", e.message);
+      return { collected: false, reason: "server_error" };
+    }
+  }
+
   function isReady() {
     return functions !== null;
   }
 
-  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, isReady };
+  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, isReady };
 })();
