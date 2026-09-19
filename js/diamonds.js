@@ -217,10 +217,20 @@ const Diamonds = (() => {
         serverResult = await ServerAntiCheat.validateCollect(
           playerPos.lat, playerPos.lon, did, d.lat, d.lon
         );
-        if (!serverResult.allowed) {
-          const toastFn = window.showToast || alert;
-          if (serverResult.reason === "too_far") {
-            toastFn("🚶 Walk a little closer to collect that diamond.", 3000);
+      if (!serverResult.allowed) {
+        const toastFn = window.showToast || alert;
+        if (serverResult.reason === "too_far") {
+          // Correct stale cached coordinates when the server returns the
+          // canonical Firestore location for this diamond.
+          if (Number.isFinite(serverResult.canonicalLat) && Number.isFinite(serverResult.canonicalLon)) {
+            d.lat = serverResult.canonicalLat;
+            d.lon = serverResult.canonicalLon;
+            Store.save(false);
+            renderAll();
+          }
+          const measuredDistance = Number(serverResult.distance);
+          const distanceText = Number.isFinite(measuredDistance) ? ` (${Math.round(measuredDistance)}m away)` : "";
+          toastFn(`🚶 Walk closer to collect that diamond${distanceText}.`, 3000);
           } else if (serverResult.reason === "position_mismatch") {
             toastFn("📍 Position updated — try again in a moment.", 3000);
           } else if (serverResult.reason === "already_collected") {
