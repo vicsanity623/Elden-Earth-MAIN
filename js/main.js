@@ -1656,7 +1656,7 @@
     }
     window.completeDailyQuest = completeDailyQuest;
 
-    function claimQuestReward(questId, startX, startY) {
+    async function claimQuestReward(questId, startX, startY) {
       if (typeof Store !== "undefined" && !Store.isSessionActive()) {
         showToast("🔒 Account active on another tab. Close the other tab first.", 4000);
         return;
@@ -1668,17 +1668,32 @@
       const qDef = QUEST_DEFS.find(q => q.id === questId);
       if (!qDef) return;
 
-      itemState.claimed = true;
+      if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
+        showToast("⚠️ Server connection required to claim quest reward.", 3500);
+        return;
+      }
+
+      const result = await ServerAntiCheat.claimQuestReward(questId);
+      if (!result.claimed) {
+        if (result.reason === "not_ready") {
+          showToast("⚠️ Quest not ready or already claimed.", 3500);
+        } else {
+          showToast("⚠️ Quest claim could not be verified.", 3500);
+        }
+        return;
+      }
+
       const state = Store.get();
-      state.eb = (Number(state.eb) || 0) + qDef.reward;
+      state.eb = result.nextEb;
+      state.dailyQuests = result.dailyQuests;
       Store.save(true);
       updateTopbar();
 
       const originX = (typeof startX === "number" && startX > 0) ? startX : window.innerWidth / 2;
       const originY = (typeof startY === "number" && startY > 0) ? startY : window.innerHeight / 2;
-      launchFlyingEBStream(originX, originY, qDef.reward);
+      launchFlyingEBStream(originX, originY, result.reward);
 
-      showToast(`🎉 Quest Claimed! +${qDef.reward} EB added to balance!`);
+      showToast(`🎉 Quest Claimed! +${result.reward} EB added to balance!`);
       renderDailyQuests();
     }
     window.claimQuestReward = claimQuestReward;
@@ -1750,6 +1765,8 @@
               openModal("player-info-modal");
               completeDailyQuest("mayor");
             } else if (qId === "survey") {
+              closeModal("calendar-modal");
+              if (typeof toggleBuyMode === "function") toggleBuyMode(true);
               showToast("🗺️ Walk or tap an unclaimed parcel to claim land!");
             }
           }
@@ -2448,6 +2465,7 @@
       const spinBtn = el("spin-btn");
       if (spinBtn && !el("wheel-result").textContent.includes("Spinning")) {
         spinBtn.disabled = false;
+        if (typeof Wheel !== "undefined" && Wheel.resetSpinningState) Wheel.resetSpinningState();
       }
       openModal("wheel-modal");
       updateTopbar();
@@ -2579,9 +2597,21 @@
         return;
       }
 
+      // Client-side diamond check before hitting server
+      const hasFreeSpins = Number(state.player?.freeSpins) > 0 && state.player?.freeSpinsNoDiamondCost;
+      if (!hasFreeSpins && (Number(state.diamonds) || 0) < 2) {
+        showToast("Not enough diamonds — go find some!", 3500);
+        return;
+      }
+
       const spinResult = await ServerAntiCheat.spinWheel();
       if (!spinResult.spun) {
-        showToast(spinResult.reason === "insufficient_diamonds" ? "Not enough diamonds — go find some!" : "⚠️ Wheel spin could not be verified.");
+        const msgs = {
+          insufficient_diamonds: "Not enough diamonds — go find some!",
+          no_save_found: "⚠️ Account not found. Please restart the game.",
+          functions_not_initialized: "⚠️ Server connection required to spin the wheel.",
+        };
+        showToast(msgs[spinResult.reason] || "⚠️ Wheel spin could not be verified.", 3500);
         return;
       }
 

@@ -181,9 +181,20 @@ const ServerAntiCheat = (() => {
     }
   }
 
+  async function claimQuestReward(questId) {
+    if (!functions) return { claimed: false, reason: "functions_not_initialized" };
+    try {
+      const fn = functions.httpsCallable("claimQuestReward");
+      return (await fn({ questId })).data;
+    } catch (e) {
+      console.warn("[ServerAntiCheat] Quest claim failed:", e.message);
+      return { claimed: false, reason: "server_error" };
+    }
+  }
+
   function isReady() {
     return functions !== null;
   }
 
-  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, isReady };
+  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, isReady };
 })();

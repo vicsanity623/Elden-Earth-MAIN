@@ -341,6 +341,7 @@ const Grid = (() => {
         }
 
         if (typeof AntiCheat !== "undefined") AntiCheat.recordPurchase("land", serverTid);
+        if (typeof window.completeDailyQuest === "function") window.completeDailyQuest("survey");
         const rarityObj = CONFIG.PLOT_RARITIES.find(r => r.key === serverPlotData.rarity) || CONFIG.PLOT_RARITIES[0];
         onBuyAttempt(true, rarityObj);
         render();

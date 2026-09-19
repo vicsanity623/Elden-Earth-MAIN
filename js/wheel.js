@@ -228,5 +228,5 @@ let spinTimeoutId = null;
     }
   }
 
-  return { init, spin };
+  return { init, spin, resetSpinningState };
 })();
