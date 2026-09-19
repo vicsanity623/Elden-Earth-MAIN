@@ -1206,7 +1206,15 @@
         onBuyAttempt: (success, rarity) => {
           if (success) {
             showToast(`Claimed a ${rarity.label} plot!`);
-            updateTopbar();
+      updateTopbar();
+
+      // Refresh leaderboard data every 60 seconds so passive rent stays current
+      if (now - lastLeaderboardRefresh >= 60000) {
+        lastLeaderboardRefresh = now;
+        if (typeof Leaderboard !== "undefined" && Leaderboard.fetchRankings) {
+          Leaderboard.fetchRankings(true);
+        }
+      }
             updateLandModal();
           } else {
             showToast(`You need ${CONFIG.PLOT_COST_EB} EB to claim this tile.`);
@@ -1300,6 +1308,7 @@
     // High-Performance Ticker: Calculates exact delta & saves locally without network thrashing
     let lastTickTime = Date.now();
     let lastIncomeCloudSave = Date.now();
+    let lastLeaderboardRefresh = Date.now();
     setInterval(() => {
       if (document.hidden) return; // Sleep income ticker calculations when app is minimized
       if (typeof Store !== "undefined" && !Store.isSessionActive()) return; // Session paused, stop earning

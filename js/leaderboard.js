@@ -384,6 +384,7 @@ const Leaderboard = (() => {
     const me = playerArray.find(p => p.id === state.player?.id);
     if (me) {
       me.cash = Math.max(Number(me.cash) || 0, Number(state.cash) || 0);
+      me.lifetimeRent = Math.max(Number(me.lifetimeRent) || 0, Number(state.lifetimeRent) || 0);
     }
 
     cachedData = { players: playerArray, mayorsMap, governorsMap, presidentsMap };
