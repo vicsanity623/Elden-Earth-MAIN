@@ -103,6 +103,18 @@ const ServerAntiCheat = (() => {
     }
   }
 
+  async function pickupPlot(tid) {
+    if (!functions) return { allowed: false, reason: "functions_not_initialized" };
+    try {
+      const fn = functions.httpsCallable("pickupPlot");
+      const result = await fn({ tid });
+      return result.data;
+    } catch (e) {
+      console.warn("[ServerAntiCheat] Plot pickup failed:", e.message);
+      return { allowed: false, reason: "server_error" };
+    }
+  }
+
   async function spinWheel() {
     if (!functions) return { spun: false, reason: "functions_not_initialized" };
     try {
@@ -207,5 +219,5 @@ const ServerAntiCheat = (() => {
     return functions !== null;
   }
 
-  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, isReady };
+  return { init, sendPosition, validatePurchase, validateCollect, relocatePlot, pickupPlot, spinWheel, activateBoost, claimBoost, recallCitadel, conquerCitadel, spawnDiamonds, citadelAction, claimQuestReward, collectExtractor, isReady };
 })();

@@ -122,6 +122,7 @@ const Grid = (() => {
 
   function openPlotModal(tid, plot) {
     selectedPlotId = tid;
+    const state = Store.get();
     const rarity = rarityInfo(plot.rarity);
     document.getElementById("plot-modal-rarity").textContent = `${rarity.label} PLOT`;
     document.getElementById("plot-modal-rarity").style.color = rarity.color;
@@ -129,17 +130,53 @@ const Grid = (() => {
     document.getElementById("plot-modal-coords").textContent = `Coords: [${plot.tx}, ${plot.ty}]`;
     document.getElementById("plot-modal-rate").textContent = `${rarity.rate} EB / sec`;
     document.getElementById("plot-modal-location").textContent = [plot.city, plot.state, plot.country].filter(Boolean).join(", ") || "Unknown";
+    // Show relocate button only for the player's own plots
+    const relocateBtn = document.getElementById("plot-relocate-btn");
+    if (relocateBtn) {
+      relocateBtn.style.display = (plot.ownerId === state.player?.id) ? "inline-block" : "none";
+    }
     document.getElementById("plot-modal")?.classList.remove("hidden");
   }
 
   async function relocatePlot() {
-    // 🚫 TEMPORARILY DISABLED TO PREVENT DUPLICATION EXPLOIT
-    if (typeof showToast === "function") {
-        showToast("⚠️ Plot relocation is temporarily disabled for maintenance.", 4000);
-    } else {
-        alert("Plot relocation is temporarily disabled.");
+    if (!selectedPlotId) return;
+    const state = Store.get();
+    const plot = state.plots[selectedPlotId] || getAllPlots()[selectedPlotId];
+    if (!plot || plot.ownerId !== state.player?.id) {
+      showToast("⚠️ You can only relocate your own plots.", 3500);
+      return;
     }
-    return; // Stop execution completely
+
+    if (!(await window.gameConfirm("Pick up this plot and add it to your Plot Bag? You can place it at a new location later.", { okText: "Pick Up" }))) {
+      return;
+    }
+
+    if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
+      showToast("⚠️ Server connection required to relocate a plot.", 4000);
+      return;
+    }
+
+    const result = await ServerAntiCheat.pickupPlot(selectedPlotId);
+    if (!result.allowed) {
+      const msgs = {
+        plot_not_found: "⚠️ This plot no longer exists.",
+        not_your_plot: "⚠️ You can only relocate your own plots.",
+        plot_already_claimed: "⚠️ This plot was just claimed by someone else!",
+      };
+      showToast(msgs[result.reason] || "⚠️ Could not pick up plot.", 3500);
+      return;
+    }
+
+    // Update local state from server result
+    state.plots = result.plots || state.plots;
+    state.plotBag = result.plotBag || state.plotBag;
+    delete globalPlots[selectedPlotId];
+    Store.save(true);
+
+    document.getElementById("plot-modal")?.classList.add("hidden");
+    selectedPlotId = null;
+    render();
+    showToast(`📦 Plot picked up! Added ${result.rarity.toUpperCase()} Plot to your bag.`, 3500);
   }
 
   function openPlotBag() {
