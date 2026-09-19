@@ -163,7 +163,8 @@ const Bootloader = (() => {
     // 1. Mount 3D Character Stage
     setProgress(15, "Summoning explorer & core registries...");
     await mount3DLoaderCharacter();
-    Store.load();
+    // Cloud save is already loaded in memory by Auth before this pipeline starts.
+    // Do NOT call Store.load() here — it would overwrite cloud data with stale localStorage.
 
     try {
       // 2. Cloud Save (35%) is restored by Auth before the boot pipeline starts.

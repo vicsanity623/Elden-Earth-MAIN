@@ -2218,27 +2218,24 @@
       const { interval, maxStored, nextCost, nextIsCapacity } = getExtractorStats(lvl);
 
       const now = Date.now();
-      const timeSince = now - (state.extractor.lastHarvest || now);
+      const baseLastHarvest = Number(state.extractor.lastHarvest) || now;
+      const timeSince = now - baseLastHarvest;
       const readyCount = Math.floor(timeSince / interval);
 
-      // SERVER-AUTHORITATIVE: Don't modify stored locally — only display timer.
-      // Actual stored count is recomputed server-side in collectExtractor.
-      // We only update lastHarvest timestamp for UI display purposes.
-      if (readyCount > 0) {
-        state.extractor.lastHarvest = now - (timeSince % interval);
-        // Show the potential stored for UI, but don't persist it to cloud
-        state.extractor.stored = Math.min(maxStored, readyCount);
-      }
+      // SERVER-AUTHORITATIVE: Don't modify lastHarvest or stored — they get synced to cloud.
+      // Compute display values locally only. Server recomputes stored in collectExtractor.
+      const displayStored = Math.min(maxStored, readyCount);
+      const displayLastHarvest = readyCount > 0 ? now - (timeSince % interval) : baseLastHarvest;
 
       // Live UI Updates
-      const remainingMs = Math.max(0, interval - (now - state.extractor.lastHarvest));
+      const remainingMs = Math.max(0, interval - (now - displayLastHarvest));
       const hrs = Math.floor(remainingMs / 3600000);
       const mins = Math.floor((remainingMs % 3600000) / 60000);
       const secs = Math.floor((remainingMs % 60000) / 1000);
 
       if (el("extractor-lvl-badge")) el("extractor-lvl-badge").textContent = `Level ${lvl}`;
       if (el("extractor-next-timer")) el("extractor-next-timer").textContent = `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-      if (el("extractor-stored-count")) el("extractor-stored-count").innerHTML = `${state.extractor.stored} / ${maxStored} <span class="hud-gem-icon"></span>`;
+      if (el("extractor-stored-count")) el("extractor-stored-count").innerHTML = `${displayStored} / ${maxStored} <span class="hud-gem-icon"></span>`;
       if (el("extractor-next-perk")) el("extractor-next-perk").textContent = nextIsCapacity ? "Next: +1 Max Diamond Capacity" : "Next: -0.0001% Mining Time";
       
       // $1.00 Unlock Condition Check
@@ -2258,8 +2255,8 @@
       }
 
       if (el("collect-extractor-btn")) {
-        el("collect-extractor-btn").innerHTML = `Collect All (${state.extractor.stored} <span class="hud-gem-icon"></span>)`;
-        el("collect-extractor-btn").disabled = state.extractor.stored === 0;
+        el("collect-extractor-btn").innerHTML = `Collect All (${displayStored} <span class="hud-gem-icon"></span>)`;
+        el("collect-extractor-btn").disabled = displayStored === 0;
       }
 
       // Live Update Extractor Side HUD Button & Red Notification Dot
