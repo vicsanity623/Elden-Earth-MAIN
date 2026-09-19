@@ -403,6 +403,10 @@ html,body{
   background:rgba(6,10,16,0.6);
   backdrop-filter:blur(2px);
 }
+.game-confirm-center{
+  align-items:center;
+  z-index:2147483647;
+}
 .modal-card{
   position:relative;
   width:100%; max-width:440px;
@@ -2472,54 +2476,6 @@ html,body{
 }
 
 /* ---------- Portrait Guard Overlay ---------- */
-#portrait-guard {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  background: var(--ink);
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 24px;
-}
-
-.portrait-guard-card {
-  max-width: 320px;
-}
-
-.portrait-guard-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  animation: rotatePhone 2.5s infinite ease-in-out;
-}
-
-#portrait-guard h2 {
-  font-family: var(--font-display);
-  color: var(--gold-hi);
-  font-size: 20px;
-  margin: 0 0 8px;
-}
-
-#portrait-guard p {
-  color: var(--text-dim);
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-@keyframes rotatePhone {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-90deg); }
-}
-
-/* Activate overlay whenever mobile device enters landscape mode */
-@media screen and (orientation: landscape) and (max-height: 500px) {
-  #portrait-guard {
-    display: flex !important;
-  }
-}
-
 /* ================= PHASE 3: HUD MICRO-INTERACTIONS & FLYING GEMS ================= */
 
 /* Floating Combat Text Popups */
@@ -4070,13 +4026,66 @@ button[aria-label="Close ad"],
 .citadel-stats-box {
   background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   padding: 12px 16px;
   margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   text-align: left;
+}
+
+.citadel-hold-balance {
+  background: rgba(255, 215, 0, 0.06);
+  border: 1px solid var(--gold-lo);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+.citadel-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.citadel-balance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.citadel-balance-val {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gold-hi);
+}
+.citadel-balance-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.citadel-balance-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--line);
+}
+.citadel-hold-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.citadel-hold-time strong {
+  font-family: var(--font-display);
+  font-size: 14px;
 }
 
 /* ---------- Siege Reflex Combat Arena ---------- */
@@ -5357,4 +5366,21 @@ body.no-shake .boost-timer-badge.super-50x {
   .lp-blog-table{ font-size:12px; }
   .lp-blog-table th,
   .lp-blog-table td{ padding:8px 10px; }
+}
+
+@media screen and (orientation: landscape) {
+  .modal-card {
+    max-height: 92vh !important;
+  }
+  #game-screen {
+    height: 100vh;
+    height: 100dvh;
+  }
+  #map-container {
+    height: 100%;
+  }
+  #game-hud {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }

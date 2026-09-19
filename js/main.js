@@ -126,7 +126,6 @@
       if (okBtn) okBtn.textContent = opts.okText || "Confirm";
       if (cancelBtn) cancelBtn.textContent = opts.cancelText || "Cancel";
       modal.classList.remove("hidden");
-      modal.style.zIndex = "2147483647";
 
       function cleanup(result) {
         modal.classList.add("hidden");

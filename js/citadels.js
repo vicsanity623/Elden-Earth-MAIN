@@ -425,7 +425,10 @@ const Citadels = (() => {
     const s = totalSec % 60;
     document.getElementById("citadel-defense-timer").textContent = `${String(d).padStart(2, "0")}D : ${String(h).padStart(2, "0")}H : ${String(m).padStart(2, "0")}M : ${String(s).padStart(2, "0")}s`;
 
-    document.getElementById("citadel-banked-spoils").innerHTML = `${spoils.diamonds} <span class="hud-gem-icon"></span> & ${spoils.eb} EB`;
+    const spoilDiamonds = document.getElementById("citadel-spoils-diamonds");
+    const spoilEb = document.getElementById("citadel-spoils-eb");
+    if (spoilDiamonds) spoilDiamonds.textContent = spoils.diamonds;
+    if (spoilEb) spoilEb.textContent = `${spoils.eb} EB`;
 
     const actionsWrap = document.getElementById("citadel-actions-wrap");
     actionsWrap.innerHTML = "";
@@ -479,6 +482,15 @@ const Citadels = (() => {
       siegeBtn.disabled = !isNearby;
       siegeBtn.addEventListener("click", () => startSiege(cid));
       actionsWrap.appendChild(siegeBtn);
+    }
+
+    // Relocate button for creator (always visible for the owner)
+    if (cit.creatorId === myId) {
+      const relocateBtn = document.createElement("button");
+      relocateBtn.className = "btn btn-secondary";
+      relocateBtn.textContent = "📦 Relocate Hold";
+      relocateBtn.addEventListener("click", () => relocateCitadel(cid));
+      actionsWrap.appendChild(relocateBtn);
     }
 
     if (modal) modal.classList.remove("hidden");
@@ -949,6 +961,25 @@ const Citadels = (() => {
 
       if (needsReRender) {
         render();
+      }
+
+      // Live update defense timer and spoils when citadel modal is open
+      if (selectedCitadelId && !document.getElementById("citadel-modal")?.classList.contains("hidden")) {
+        const cit = globalCitadels[selectedCitadelId];
+        if (cit && cit.defender) {
+          const spoils = calculateSpoils(cit);
+          const totalSec = Math.floor(spoils.elapsedMs / 1000);
+          const dd = Math.floor(totalSec / 86400);
+          const hh = Math.floor((totalSec % 86400) / 3600);
+          const mm = Math.floor((totalSec % 3600) / 60);
+          const ss = totalSec % 60;
+          const timerEl = document.getElementById("citadel-defense-timer");
+          if (timerEl) timerEl.textContent = `${String(dd).padStart(2, "0")}D : ${String(hh).padStart(2, "0")}H : ${String(mm).padStart(2, "0")}M : ${String(ss).padStart(2, "0")}s`;
+          const dEl = document.getElementById("citadel-spoils-diamonds");
+          const eEl = document.getElementById("citadel-spoils-eb");
+          if (dEl) dEl.textContent = spoils.diamonds;
+          if (eEl) eEl.textContent = `${spoils.eb} EB`;
+        }
       }
     }, 1000);
 

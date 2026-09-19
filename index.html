@@ -31,14 +31,6 @@
 <body>
 
 <!-- ===================== PORTRAIT MODE GUARD ===================== -->
-<div id="portrait-guard">
-  <div class="portrait-guard-card">
-    <div class="portrait-guard-icon">📱</div>
-    <h2>Portrait Mode Only</h2>
-    <p>Please rotate your phone vertically to continue playing Elden Earth.</p>
-  </div>
-</div>
-
 <!-- ===================== PUBLIC LANDING PAGE (AdSense & Storefront) ===================== -->
 <div id="landing-page" class="lp">
   <div class="lp-inner">
@@ -1430,13 +1422,24 @@ Modern Extraction Model:
         <span>Reigning Defender:</span>
         <strong id="citadel-defender-name" class="gold-text">Empty (Unclaimed)</strong>
       </div>
-      <div class="stat-row">
-        <span>Defense Duration:</span>
-        <strong id="citadel-defense-timer" class="teal-text">00D : 00H : 00M : 00s</strong>
+    </div>
+
+    <!-- Prominent Hold Balance -->
+    <div class="citadel-hold-balance">
+      <div class="citadel-balance-row">
+        <div class="citadel-balance-item">
+          <span class="citadel-balance-val" id="citadel-spoils-diamonds">0</span>
+          <span class="citadel-balance-label"><span class="hud-gem-icon"></span> Diamonds</span>
+        </div>
+        <div class="citadel-balance-divider"></div>
+        <div class="citadel-balance-item">
+          <span class="citadel-balance-val" id="citadel-spoils-eb">0 EB</span>
+          <span class="citadel-balance-label">Banked</span>
+        </div>
       </div>
-      <div class="stat-row">
-        <span>Banked Spoils:</span>
-        <strong id="citadel-banked-spoils" class="gold-text">0 <span class="hud-gem-icon"></span> & 0 EB</strong>
+      <div class="citadel-hold-time">
+        <span>HOLD TIME:</span>
+        <strong id="citadel-defense-timer" class="gold-text">00D : 00H : 00M : 00s</strong>
       </div>
     </div>
 
@@ -1575,7 +1578,7 @@ Modern Extraction Model:
 </div>
 
 <!-- ===================== CUSTOM GAME CONFIRM MODAL ===================== -->
-<div id="game-confirm-modal" class="modal hidden" style="z-index:2147483647;">
+<div id="game-confirm-modal" class="modal game-confirm-center hidden">
   <div class="modal-card" style="max-width:360px;text-align:center;padding:28px 24px;">
     <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
     <p class="confirm-msg" style="font-size:14px;line-height:1.5;color:var(--parchment);margin:0 0 20px;"></p>
