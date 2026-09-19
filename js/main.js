@@ -2622,16 +2622,18 @@
         return;
       }
 
-      state.diamonds = spinResult.nextDiamonds;
-      state.eb = spinResult.nextEb;
-      state.player.freeSpins = spinResult.nextFreeSpins;
-      state.player.freeSpinsNoDiamondCost = spinResult.nextFreeSpins > 0;
-      Store.save(true);
-      updateTopbar();
       el("spin-btn").disabled = true;
       el("wheel-result").textContent = "Spinning...";
 
       Wheel.spin((slice) => {
+        // Update currency AFTER animation completes, not before
+        state.diamonds = spinResult.nextDiamonds;
+        state.eb = spinResult.nextEb;
+        state.player.freeSpins = spinResult.nextFreeSpins;
+        state.player.freeSpinsNoDiamondCost = spinResult.nextFreeSpins > 0;
+        Store.save(true);
+        updateTopbar();
+
         const s = Store.get();
         if (!slice) return;
 
