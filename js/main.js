@@ -1325,8 +1325,8 @@
       state.lifetimeRent += deltaEarned;
       state.lastTick = now;
 
-      // Periodic cloud save every 30 seconds from income loop (also refreshes session lock heartbeat)
-      if (now - lastIncomeCloudSave >= 30000) {
+      // Periodic cloud save every 10 seconds from income loop (also refreshes session lock heartbeat)
+      if (now - lastIncomeCloudSave >= 10000) {
         lastIncomeCloudSave = now;
         // Refresh the session lock heartbeat so other windows know we're alive
         if (state.sessionLock) state.sessionLock.lockedAt = now;
