@@ -236,6 +236,11 @@
     }
   }
 
+  function formatRate(val) {
+    if (!val) return "0";
+    return val.toFixed(12).replace(/\.?0+$/, "");
+  }
+
   function updateLandModal() {
     const state = Store.get();
     el("land-count").textContent = Object.keys(state.plots).length;
@@ -257,7 +262,7 @@
     CONFIG.PLOT_RARITIES.forEach(rarity => {
       const pct = total > 0 ? ((counts[rarity.key] / total) * 100).toFixed(1) : "0.0";
       if (el(`weight-${rarity.key}`)) el(`weight-${rarity.key}`).textContent = pct;
-      if (el(`rate-${rarity.key}`)) el(`rate-${rarity.key}`).textContent = rarity.rate;
+      if (el(`rate-${rarity.key}`)) el(`rate-${rarity.key}`).textContent = formatRate(rarity.rate);
     });
   }
   
