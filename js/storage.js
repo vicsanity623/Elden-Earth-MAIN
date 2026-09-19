@@ -488,12 +488,13 @@ const Store = (() => {
           // Merge calendar (take most recent values)
           state.calendar = mergedCalendar;
           state.dailyQuests = mergedQuests;
-          // Restore ephemeral local-only state
-          state.liveDiamonds = prevLiveDiamonds;
-          state.collectedDiamondIds = prevCollected;
-          state.lastDiamondSpawn = prevLastDiamondSpawn;
-          state.lastDiamondMovementAt = prevLastDiamondMovementAt;
-          state.lastDiamondPlayerPosition = prevLastDiamondPlayerPosition;
+          // Merge ephemeral state — diamonds are now cloud-synced
+          state.liveDiamonds = Object.assign(state.liveDiamonds || {}, prevLiveDiamonds);
+          const mergedCollected2 = new Set([...(state.collectedDiamondIds || []), ...prevCollected]);
+          state.collectedDiamondIds = [...mergedCollected2].slice(-200);
+          state.lastDiamondSpawn = Math.max(state.lastDiamondSpawn || 0, prevLastDiamondSpawn);
+          state.lastDiamondMovementAt = Math.max(state.lastDiamondMovementAt || 0, prevLastDiamondMovementAt);
+          state.lastDiamondPlayerPosition = prevLastDiamondPlayerPosition || state.lastDiamondPlayerPosition;
           // Upload merged state to cloud immediately
           state.lastSavedAt = Date.now();
           localStorage.setItem(KEY, JSON.stringify(state));
@@ -523,12 +524,14 @@ const Store = (() => {
             state.player.avatar = currentAvatar;
           }
 
-          // Restore ephemeral local-only state (diamonds are not in cloud)
-          state.liveDiamonds = prevLiveDiamonds;
-          state.collectedDiamondIds = prevCollected;
-          state.lastDiamondSpawn = prevLastDiamondSpawn;
-          state.lastDiamondMovementAt = prevLastDiamondMovementAt;
-          state.lastDiamondPlayerPosition = prevLastDiamondPlayerPosition;
+          // Merge ephemeral local-only state with cloud state
+          // Diamonds are now synced to cloud — merge instead of overwrite
+          state.liveDiamonds = Object.assign(state.liveDiamonds || {}, prevLiveDiamonds);
+          const mergedCollected = new Set([...(state.collectedDiamondIds || []), ...prevCollected]);
+          state.collectedDiamondIds = [...mergedCollected].slice(-200);
+          state.lastDiamondSpawn = Math.max(state.lastDiamondSpawn || 0, prevLastDiamondSpawn);
+          state.lastDiamondMovementAt = Math.max(state.lastDiamondMovementAt || 0, prevLastDiamondMovementAt);
+          state.lastDiamondPlayerPosition = prevLastDiamondPlayerPosition || state.lastDiamondPlayerPosition;
 
           localStorage.setItem(KEY, JSON.stringify(state));
         }
@@ -867,16 +870,9 @@ let lastConflictCheck = {};
     state.cash += earned;
     state.lifetimeRent += earned;
 
-    if (state.extractor && state.extractor.built) {
-      const interval = CONFIG.EXTRACTOR_INTERVAL_MS || 600000;
-      const maxStored = CONFIG.EXTRACTOR_MAX_STORED || 50;
-      const timeSince = now - state.extractor.lastHarvest;
-      const newDiamonds = Math.floor(timeSince / interval);
-      if (newDiamonds > 0) {
-        state.extractor.stored = Math.min(maxStored, (state.extractor.stored || 0) + newDiamonds);
-        state.extractor.lastHarvest = now - (timeSince % interval);
-      }
-    }
+    // NOTE: Extractor tick is now server-authoritative only.
+    // Client-side stored accumulation removed to prevent multi-tab farming.
+    // The server recomputes from lastHarvest in collectExtractor.
 
     state.lastTick = now;
     save(false);

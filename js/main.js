@@ -2209,13 +2209,16 @@
       const { interval, maxStored, nextCost, nextIsCapacity } = getExtractorStats(lvl);
 
       const now = Date.now();
-      const timeSince = now - state.extractor.lastHarvest;
+      const timeSince = now - (state.extractor.lastHarvest || now);
       const readyCount = Math.floor(timeSince / interval);
 
-      if (readyCount > 0 && state.extractor.stored < maxStored) {
-        state.extractor.stored = Math.min(maxStored, state.extractor.stored + readyCount);
+      // SERVER-AUTHORITATIVE: Don't modify stored locally — only display timer.
+      // Actual stored count is recomputed server-side in collectExtractor.
+      // We only update lastHarvest timestamp for UI display purposes.
+      if (readyCount > 0) {
         state.extractor.lastHarvest = now - (timeSince % interval);
-        Store.save(true);
+        // Show the potential stored for UI, but don't persist it to cloud
+        state.extractor.stored = Math.min(maxStored, readyCount);
       }
 
       // Live UI Updates

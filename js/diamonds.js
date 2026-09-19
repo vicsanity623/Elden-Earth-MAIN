@@ -11,6 +11,32 @@ const Diamonds = (() => {
   let spawnTimer = null;
   let spawnInFlight = false;
 
+  // Cross-tab sync: broadcast diamond collection to other tabs
+  let crossTabChannel = null;
+  try {
+    crossTabChannel = new BroadcastChannel("elden_earth_diamonds");
+    crossTabChannel.onmessage = (e) => {
+      if (!e.data || !e.data.type) return;
+      const state = Store.get();
+      if (e.data.type === "collected" && e.data.did) {
+        if (!state.collectedDiamondIds) state.collectedDiamondIds = [];
+        if (!state.collectedDiamondIds.includes(e.data.did)) {
+          state.collectedDiamondIds.push(e.data.did);
+          if (state.collectedDiamondIds.length > 100) state.collectedDiamondIds.shift();
+        }
+        delete state.liveDiamonds[e.data.did];
+        if (markers[e.data.did]) { markers[e.data.did].remove(); delete markers[e.data.did]; }
+        Store.save(false);
+      } else if (e.data.type === "spawned" && e.data.diamonds) {
+        for (const d of e.data.diamonds) {
+          state.liveDiamonds[d.id] = d;
+        }
+        state.lastDiamondSpawn = e.data.timestamp || Date.now();
+        renderAll();
+      }
+    };
+  } catch (e) {}
+
   // Floating Combat Text Helper
   function spawnFloatingText(x, y, htmlContent) {
     const popup = document.createElement("div");
@@ -256,6 +282,11 @@ const Diamonds = (() => {
     Store.save(true);
     if (markers[did]) { markers[did].remove(); delete markers[did]; }
     onCollect();
+
+    // Cross-tab sync: notify other tabs
+    if (crossTabChannel) {
+      try { crossTabChannel.postMessage({ type: "collected", did }); } catch (e) {}
+    }
   }
 
   function pruneExpired() {
@@ -298,6 +329,11 @@ const Diamonds = (() => {
     result.diamonds.forEach((diamond) => { state.liveDiamonds[diamond.id] = diamond; });
     state.lastDiamondSpawn = Date.now();
     renderAll();
+
+    // Cross-tab sync: notify other tabs about new diamonds
+    if (crossTabChannel) {
+      try { crossTabChannel.postMessage({ type: "spawned", diamonds: result.diamonds, timestamp: state.lastDiamondSpawn }); } catch (e) {}
+    }
   }
 
   async function trySpawn() {
