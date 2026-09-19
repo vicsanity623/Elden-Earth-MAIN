@@ -214,13 +214,6 @@ const Grid = (() => {
     const centerLon = (corners[0][1] + corners[2][1]) / 2;
     const territory = await Geo.getTerritoryInfo(centerLat, centerLon);
     const rarity = rarityInfo(rarityKey);
-    const sourceId = Object.keys(state.plots).find(id => state.plots[id].rarity === rarityKey);
-    const plotData = {
-      ...(sourceId ? state.plots[sourceId] : {}),
-      tx, ty, city: territory.city, state: territory.state, country: territory.country,
-      rarity: rarityKey, rate: rarity.rate, ownerId: state.player.id,
-      ownerName: state.player.name || "Traveler", avatar: state.player.avatar || "🙂", claimedAt: Date.now(),
-    };
 
     if (typeof ServerAntiCheat === "undefined" || !ServerAntiCheat.isReady()) {
       if (typeof showToast === "function") showToast("⚠️ Server connection required to relocate a plot.", 4000);
